@@ -290,22 +290,22 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
     }
   }
 
-  void _showExerciseForm(BuildContext context, [ExerciseModel? exercise]) {
+  void _showExerciseForm(BuildContext parentContext, [ExerciseModel? exercise]) {
     final nameController = TextEditingController(text: exercise?.name);
     final selectedMuscle = ValueNotifier<String>(exercise?.targetMuscle ?? 'Chest');
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
             left: 24,
             right: 24,
             top: 24,
@@ -318,7 +318,7 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
               children: [
                 Text(
                   exercise == null ? 'Create New Exercise' : 'Edit Exercise',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  style: Theme.of(sheetContext).textTheme.headlineMedium?.copyWith(
                         color: AppTheme.primary,
                         fontSize: 20,
                       ),
@@ -375,8 +375,8 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                                 nameController.text.trim(),
                                 selectedMuscle.value,
                               );
-                          if (context.mounted) {
-                            context.showSuccessSnackBar('Exercise created successfully');
+                          if (parentContext.mounted) {
+                            parentContext.showSuccessSnackBar('Exercise created successfully');
                           }
                         } else {
                           await ref.read(exerciseControllerProvider.notifier).updateExercise(
@@ -384,15 +384,16 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                                 nameController.text.trim(),
                                 selectedMuscle.value,
                               );
-                          if (context.mounted) {
-                            context.showSuccessSnackBar('Exercise updated successfully');
+                          if (parentContext.mounted) {
+                            parentContext.showSuccessSnackBar('Exercise updated successfully');
                           }
                         }
-                        if (context.mounted) Navigator.pop(context);
+                        if (sheetContext.mounted) Navigator.pop(sheetContext);
                       } catch (e) {
-                        if (context.mounted) {
-                          context.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
+                        if (parentContext.mounted) {
+                          parentContext.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
                         }
+                        if (sheetContext.mounted) Navigator.pop(sheetContext);
                       }
                     }
                   },
@@ -406,14 +407,14 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
     );
   }
 
-  void _showCardActions(BuildContext context, ExerciseModel exercise) {
+  void _showCardActions(BuildContext parentContext, ExerciseModel exercise) {
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -422,16 +423,16 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                 leading: const Icon(Icons.edit_rounded, color: AppTheme.textPrimary),
                 title: const Text('Edit Exercise'),
                 onTap: () {
-                  Navigator.pop(context);
-                  _showExerciseForm(context, exercise);
+                  Navigator.pop(sheetContext);
+                  _showExerciseForm(parentContext, exercise);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.delete_rounded, color: AppTheme.error),
                 title: const Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
                 onTap: () {
-                  Navigator.pop(context);
-                  _confirmDelete(context, exercise);
+                  Navigator.pop(sheetContext);
+                  _confirmDelete(parentContext, exercise);
                 },
               ),
             ],
@@ -441,30 +442,30 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
     );
   }
 
-  void _confirmDelete(BuildContext context, ExerciseModel exercise) {
+  void _confirmDelete(BuildContext parentContext, ExerciseModel exercise) {
     showDialog(
-      context: context,
-      builder: (context) {
+      context: parentContext,
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: AppTheme.surface,
           title: const Text('Delete Exercise'),
           content: Text('Are you sure you want to delete "${exercise.name}"? This action cannot be undone if this exercise has historical logs.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 try {
                   await ref.read(exerciseControllerProvider.notifier).deleteExercise(exercise.id);
-                  if (context.mounted) {
-                    context.showSuccessSnackBar('Exercise deleted successfully');
+                  if (parentContext.mounted) {
+                    parentContext.showSuccessSnackBar('Exercise deleted successfully');
                   }
                 } catch (e) {
-                  if (context.mounted) {
-                    context.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
+                  if (parentContext.mounted) {
+                    parentContext.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
                   }
                 }
               },
