@@ -135,4 +135,87 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
     state = state.copyWith(searchQuery: query);
     fetchFirstPage();
   }
+
+  Future<void> updateSession(String id, String title, int durationMinutes) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final service = ref.read(workoutServiceProvider);
+      final updated = await service.updateWorkoutSession(
+        sessionId: id,
+        title: title,
+        durationMinutes: durationMinutes,
+        token: token,
+      );
+      
+      final updatedList = state.sessions.map((s) => s.id == id ? updated : s).toList();
+      state = state.copyWith(sessions: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSession(String id) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final service = ref.read(workoutServiceProvider);
+      await service.deleteWorkoutSession(sessionId: id, token: token);
+      
+      final updatedList = state.sessions.where((s) => s.id != id).toList();
+      state = state.copyWith(sessions: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> updateSet(String sessionId, String setId, double weightKg, int reps, String setType) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final service = ref.read(workoutServiceProvider);
+      final updatedSet = await service.updateWorkoutSet(
+        setId: setId,
+        weightKg: weightKg,
+        reps: reps,
+        setType: setType,
+        token: token,
+      );
+
+      final updatedList = state.sessions.map((session) {
+        if (session.id == sessionId) {
+          final updatedSets = session.sets.map((set) {
+            return set.id == setId ? updatedSet : set;
+          }).toList();
+          return session.copyWith(sets: updatedSets);
+        }
+        return session;
+      }).toList();
+
+      state = state.copyWith(sessions: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSet(String sessionId, String setId) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final service = ref.read(workoutServiceProvider);
+      await service.deleteWorkoutSet(setId: setId, token: token);
+
+      final updatedList = state.sessions.map((session) {
+        if (session.id == sessionId) {
+          final updatedSets = session.sets.where((set) => set.id != setId).toList();
+          return session.copyWith(sets: updatedSets);
+        }
+        return session;
+      }).toList();
+
+      state = state.copyWith(sessions: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
 }

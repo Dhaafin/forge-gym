@@ -1091,14 +1091,12 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header row ──
+              // Header Row
               Padding(
                 padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [
-                    // Icon container
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                    Container(
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
@@ -1114,8 +1112,6 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                       ),
                     ),
                     const SizedBox(width: 14),
-
-                    // Text content
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1145,34 +1141,228 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                         ],
                       ),
                     ),
-
-                    // Animated chevron
-                    AnimatedRotation(
-                      turns: isExpanded ? 0.25 : 0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      child: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppTheme.primary,
-                        size: 20,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: AppTheme.textSecondary,
+                            size: 20,
+                          ),
+                          onPressed: () => _showSessionActions(context, session),
+                        ),
+                        const SizedBox(width: 8),
+                        AnimatedRotation(
+                          turns: isExpanded ? 0.25 : 0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.primary,
+                            size: 20,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-
-              // ── Expandable detail panel ──
               AnimatedSize(
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.easeInOut,
-                child: isExpanded
-                    ? _buildDetailPanel(session)
-                    : const SizedBox.shrink(),
+                child: isExpanded ? _buildDetailPanel(session) : const SizedBox.shrink(),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _showSessionActions(BuildContext parentContext, WorkoutSessionModel session) {
+    showModalBottomSheet(
+      context: parentContext,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_rounded, color: AppTheme.textPrimary),
+                title: const Text('Edit Workout Session'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showEditSessionDialog(parentContext, session);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded, color: AppTheme.error),
+                title: const Text('Delete Workout Session', style: TextStyle(color: AppTheme.error)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _confirmDeleteSession(parentContext, session);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditSessionDialog(BuildContext parentContext, WorkoutSessionModel session) {
+    showGeneralDialog(
+      context: parentContext,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final titleController = TextEditingController(text: session.title);
+        final durationController = TextEditingController(text: (session.durationMinutes ?? 0).toString());
+        bool isSaving = false;
+
+        return StatefulBuilder(
+          builder: (stContext, setState) {
+            return Scaffold(
+              backgroundColor: AppTheme.background,
+              appBar: AppBar(
+                title: const Text('Edit Workout Session'),
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+                actions: [
+                  if (isSaving)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else
+                    TextButton(
+                      onPressed: () async {
+                        final title = titleController.text.trim();
+                        final duration = int.tryParse(durationController.text) ?? 0;
+                        if (title.isEmpty) return;
+
+                        setState(() {
+                          isSaving = true;
+                        });
+
+                        try {
+                          await ref
+                              .read(workoutHistoryControllerProvider.notifier)
+                              .updateSession(session.id, title, duration);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                          if (parentContext.mounted) {
+                            parentContext.showSuccessFlash('Workout session updated');
+                          }
+                        } catch (e) {
+                          setState(() {
+                            isSaving = false;
+                          });
+                          if (parentContext.mounted) {
+                            parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
+                          }
+                        }
+                      },
+                      child: const Text('SAVE', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Session Details',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Modify the workout name and tracked duration.',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                    ),
+                    const SizedBox(height: 32),
+                    TextField(
+                      controller: titleController,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Workout Title',
+                        hintText: 'e.g. Morning Push Workout',
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: durationController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (Minutes)',
+                        hintText: 'e.g. 60',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteSession(BuildContext parentContext, WorkoutSessionModel session) {
+    showDialog(
+      context: parentContext,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppTheme.surface,
+          title: const Text('Delete Workout Session'),
+          content: Text('Are you sure you want to delete "${session.title}"? This will permanently delete the session and all its sets.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                try {
+                  await ref.read(workoutHistoryControllerProvider.notifier).deleteSession(session.id);
+                  if (parentContext.mounted) {
+                    parentContext.showSuccessFlash('Workout session deleted');
+                  }
+                } catch (e) {
+                  if (parentContext.mounted) {
+                    parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
+                  }
+                }
+              },
+              child: const Text('DELETE', style: TextStyle(color: AppTheme.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1255,17 +1445,16 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                 ...session.sets.asMap().entries.map((entry) {
                   final i = entry.key;
                   final set = entry.value;
-                  final String setLabel = set is Map
-                      ? [
-                          if (set['exercise_name'] != null) set['exercise_name'] as String,
-                          if (set['reps'] != null) '${set['reps']} reps',
-                          if (set['weight_kg'] != null) '${set['weight_kg']} kg',
-                        ].join(' · ')
-                      : 'Set ${i + 1}';
+                  final String setLabel = [
+                    set.exerciseName,
+                    '${set.reps} reps',
+                    '${set.weightKg} kg',
+                    if (set.setType != 'normal') set.setType.toUpperCase(),
+                  ].join(' · ');
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppTheme.background,
                       borderRadius: BorderRadius.circular(10),
@@ -1281,7 +1470,7 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                           ),
                           child: Center(
                             child: Text(
-                              '${i + 1}',
+                              '${set.setNumber}',
                               style: const TextStyle(
                                 color: AppTheme.primary,
                                 fontSize: 11,
@@ -1296,6 +1485,43 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                             setLabel,
                             style: timeStyle,
                           ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          style: const ButtonStyle(
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onSelected: (action) {
+                            if (action == 'edit') {
+                              _showEditSetSheet(context, session.id, set);
+                            } else if (action == 'delete') {
+                              _confirmDeleteSet(context, session.id, set);
+                            }
+                          },
+                          itemBuilder: (popContext) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_rounded, size: 16),
+                                  SizedBox(width: 8),
+                                  Text('Edit Set'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_rounded, color: AppTheme.error, size: 16),
+                                  SizedBox(width: 8),
+                                  Text('Delete Set', style: TextStyle(color: AppTheme.error)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1324,6 +1550,183 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
       ],
     );
   }
+
+  void _showEditSetSheet(BuildContext parentContext, String sessionId, WorkoutSetModel set) {
+    showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final repsController = TextEditingController(text: set.reps.toString());
+        final weightController = TextEditingController(text: set.weightKg.toString());
+        String selectedType = set.setType;
+        bool isSaving = false;
+
+        return StatefulBuilder(
+          builder: (stContext, setState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(sheetContext).viewInsets.bottom + 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Edit Set for ${set.exerciseName}',
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: weightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: AppTheme.textPrimary),
+                          decoration: const InputDecoration(
+                            labelText: 'Weight (kg)',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: repsController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: AppTheme.textPrimary),
+                          decoration: const InputDecoration(
+                            labelText: 'Reps',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    dropdownColor: AppTheme.surface,
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                    decoration: const InputDecoration(
+                      labelText: 'Set Type',
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'normal', child: Text('Normal Set')),
+                      DropdownMenuItem(value: 'warmup', child: Text('Warmup Set')),
+                      DropdownMenuItem(value: 'dropset', child: Text('Drop Set')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          selectedType = val;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              final reps = int.tryParse(repsController.text) ?? 0;
+                              final weight = double.tryParse(weightController.text) ?? 0.0;
+                              setState(() {
+                                isSaving = true;
+                              });
+
+                              try {
+                                await ref
+                                    .read(workoutHistoryControllerProvider.notifier)
+                                    .updateSet(sessionId, set.id, weight, reps, selectedType);
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                                if (parentContext.mounted) {
+                                  parentContext.showSuccessFlash('Set updated successfully');
+                                }
+                              } catch (e) {
+                                setState(() {
+                                  isSaving = false;
+                                });
+                                if (parentContext.mounted) {
+                                  parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
+                                }
+                              }
+                            },
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                            )
+                          : const Text('SAVE SET'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteSet(BuildContext parentContext, String sessionId, WorkoutSetModel set) {
+    showDialog(
+      context: parentContext,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppTheme.surface,
+          title: const Text('Delete Set'),
+          content: Text('Are you sure you want to delete set ${set.setNumber} for ${set.exerciseName}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                try {
+                  await ref.read(workoutHistoryControllerProvider.notifier).deleteSet(sessionId, set.id);
+                  if (parentContext.mounted) {
+                    parentContext.showSuccessFlash('Set deleted successfully');
+                  }
+                } catch (e) {
+                  if (parentContext.mounted) {
+                    parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
+                  }
+                }
+              },
+              child: const Text('DELETE', style: TextStyle(color: AppTheme.error)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   Widget _buildDetailTile({
     required String label,

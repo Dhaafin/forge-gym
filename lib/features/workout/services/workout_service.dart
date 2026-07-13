@@ -176,4 +176,116 @@ class WorkoutService {
       throw Exception(e.toString());
     }
   }
+
+  Future<WorkoutSessionModel> updateWorkoutSession({
+    required String sessionId,
+    required String title,
+    required int durationMinutes,
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId').replace(
+        queryParameters: {
+          'title': title,
+          'duration_minutes': durationMinutes.toString(),
+        },
+      );
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return WorkoutSessionModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to update session. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> deleteWorkoutSession({
+    required String sessionId,
+    String? token,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId'),
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 204) {
+        return;
+      } else {
+        throw Exception('Failed to delete session. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<WorkoutSetModel> updateWorkoutSet({
+    required String setId,
+    required double weightKg,
+    required int reps,
+    required String setType,
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/set/$setId').replace(
+        queryParameters: {
+          'weight_kg': weightKg.toString(),
+          'reps': reps.toString(),
+          'set_type': setType,
+        },
+      );
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return WorkoutSetModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to update workout set. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> deleteWorkoutSet({
+    required String setId,
+    String? token,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/set/$setId'),
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 204) {
+        return;
+      } else {
+        throw Exception('Failed to delete workout set. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 }
