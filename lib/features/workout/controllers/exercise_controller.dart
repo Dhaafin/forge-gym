@@ -155,4 +155,53 @@ class ExerciseController extends Notifier<ExerciseState> {
     state = state.copyWith(selectedMuscle: muscle, searchQuery: ''); // reset search text if selecting muscle
     fetchFirstPage();
   }
+
+  Future<void> createExercise(String name, String targetMuscle) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final workoutService = ref.read(workoutServiceProvider);
+      final newExercise = await workoutService.createExercise(
+        name: name,
+        targetMuscle: targetMuscle,
+        token: token,
+      );
+      state = state.copyWith(
+        exercises: [newExercise, ...state.exercises],
+      );
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> updateExercise(String id, String name, String targetMuscle) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final workoutService = ref.read(workoutServiceProvider);
+      final updated = await workoutService.updateExercise(
+        exerciseId: id,
+        name: name,
+        targetMuscle: targetMuscle,
+        token: token,
+      );
+      final updatedList = state.exercises.map((e) => e.id == id ? updated : e).toList();
+      state = state.copyWith(exercises: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> deleteExercise(String id) async {
+    try {
+      final token = ref.read(authControllerProvider).value;
+      final workoutService = ref.read(workoutServiceProvider);
+      await workoutService.deleteExercise(exerciseId: id, token: token);
+      final updatedList = state.exercises.where((e) => e.id != id).toList();
+      state = state.copyWith(exercises: updatedList);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
 }

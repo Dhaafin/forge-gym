@@ -289,142 +289,346 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
     }
   }
 
+  void _showExerciseForm(BuildContext context, [ExerciseModel? exercise]) {
+    final nameController = TextEditingController(text: exercise?.name);
+    final selectedMuscle = ValueNotifier<String>(exercise?.targetMuscle ?? 'Chest');
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  exercise == null ? 'Create New Exercise' : 'Edit Exercise',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: AppTheme.primary,
+                        fontSize: 20,
+                      ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: nameController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Exercise Name',
+                    hintText: 'e.g. Bench Press',
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                ValueListenableBuilder<String>(
+                  valueListenable: selectedMuscle,
+                  builder: (context, muscle, _) {
+                    final musclesList = ['Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+                    // Ensure the selected muscle value exists in the dropdown list
+                    final currentVal = musclesList.contains(muscle) ? muscle : musclesList.first;
+                    return DropdownButtonFormField<String>(
+                      value: currentVal,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Muscle',
+                      ),
+                      dropdownColor: AppTheme.surface,
+                      items: musclesList.map((m) {
+                        return DropdownMenuItem(
+                          value: m,
+                          child: Text(m),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          selectedMuscle.value = val;
+                        }
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      try {
+                        if (exercise == null) {
+                          await ref.read(exerciseControllerProvider.notifier).createExercise(
+                                nameController.text.trim(),
+                                selectedMuscle.value,
+                              );
+                        } else {
+                          await ref.read(exerciseControllerProvider.notifier).updateExercise(
+                                exercise.id,
+                                nameController.text.trim(),
+                                selectedMuscle.value,
+                              );
+                        }
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: AppTheme.error,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: Text(exercise == null ? 'CREATE' : 'SAVE CHANGES'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCardActions(BuildContext context, ExerciseModel exercise) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_rounded, color: AppTheme.textPrimary),
+                title: const Text('Edit Exercise'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showExerciseForm(context, exercise);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded, color: AppTheme.error),
+                title: const Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context, exercise);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(BuildContext context, ExerciseModel exercise) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.surface,
+          title: const Text('Delete Exercise'),
+          content: Text('Are you sure you want to delete "${exercise.name}"? This action cannot be undone if this exercise has historical logs.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await ref.read(exerciseControllerProvider.notifier).deleteExercise(exercise.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Exercise deleted successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString().replaceAll('Exception: ', '')),
+                        backgroundColor: AppTheme.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('DELETE', style: TextStyle(color: AppTheme.error)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseControllerProvider);
     final muscles = ['All', 'Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
 
-    return Column(
-      children: [
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search exercise...',
-              prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, color: AppTheme.textSecondary),
-                      onPressed: () {
-                        _searchController.clear();
-                        ref.read(exerciseControllerProvider.notifier).setSearch('');
-                      },
-                    )
-                  : null,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search exercise...',
+                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textSecondary),
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(exerciseControllerProvider.notifier).setSearch('');
+                        },
+                      )
+                    : null,
+              ),
+              onChanged: (val) {
+                setState(() {});
+              },
+              onSubmitted: (val) {
+                ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+              },
             ),
-            onChanged: (val) {
-              setState(() {}); // to show/hide clear icon
-            },
-            onSubmitted: (val) {
-              ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
-            },
           ),
-        ),
 
-        // Muscle filter pills
-        SizedBox(
-          height: 48,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            itemCount: muscles.length,
-            itemBuilder: (context, index) {
-              final muscle = muscles[index];
-              final isSelected = state.selectedMuscle == muscle;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: ChoiceChip(
-                  label: Text(muscle),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
-                      _searchController.clear();
-                    }
-                  },
-                  selectedColor: AppTheme.primary,
-                  backgroundColor: AppTheme.surface,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.black : AppTheme.textPrimary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.05),
+          // Muscle filter pills
+          SizedBox(
+            height: 48,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              itemCount: muscles.length,
+              itemBuilder: (context, index) {
+                final muscle = muscles[index];
+                final isSelected = state.selectedMuscle == muscle;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: ChoiceChip(
+                    label: Text(muscle),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
+                        _searchController.clear();
+                      }
+                    },
+                    selectedColor: AppTheme.primary,
+                    backgroundColor: AppTheme.surface,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.black : AppTheme.textPrimary,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
-                  ),
-                  showCheckmark: false,
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Exercise Grid
-        Expanded(
-          child: state.isLoadingFirst
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-              : state.errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 48),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: Text(
-                              state.errorMessage!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppTheme.textSecondary),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 40)),
-                            onPressed: () => ref.read(exerciseControllerProvider.notifier).fetchFirstPage(),
-                            child: const Text('Try Again'),
-                          ),
-                        ],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.05),
                       ),
-                    )
-                  : state.exercises.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No exercises found.',
-                            style: TextStyle(color: AppTheme.textSecondary),
-                          ),
-                        )
-                      : GridView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16.0),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.2,
-                          ),
-                          itemCount: state.exercises.length + (state.isLoadingMore ? 2 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= state.exercises.length) {
-                              return _buildSkeletonCard();
-                            }
-                            final exercise = state.exercises[index];
-                            return _buildExerciseCard(exercise);
-                          },
+                    ),
+                    showCheckmark: false,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Exercise Grid
+          Expanded(
+            child: state.isLoadingFirst
+                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                : state.errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 48),
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: Text(
+                                state.errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: AppTheme.textSecondary),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(minimumSize: const Size(120, 40)),
+                              onPressed: () => ref.read(exerciseControllerProvider.notifier).fetchFirstPage(),
+                              child: const Text('Try Again'),
+                            ),
+                          ],
                         ),
-        ),
-      ],
+                      )
+                    : state.exercises.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No exercises found.',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          )
+                        : GridView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16.0),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.2,
+                            ),
+                            itemCount: state.exercises.length + (state.isLoadingMore ? 2 : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= state.exercises.length) {
+                                return _buildSkeletonCard();
+                              }
+                              final exercise = state.exercises[index];
+                              return _buildExerciseCard(exercise);
+                            },
+                          ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.black,
+        onPressed: () => _showExerciseForm(context),
+        child: const Icon(Icons.add_rounded),
+      ),
     );
   }
 
   Widget _buildExerciseCard(ExerciseModel exercise) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -443,17 +647,31 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              exercise.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  exercise.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
+              GestureDetector(
+                onTap: () => _showCardActions(context, exercise),
+                child: const Icon(
+                  Icons.more_vert_rounded,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Container(

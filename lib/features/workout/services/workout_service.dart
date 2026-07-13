@@ -42,4 +42,99 @@ class WorkoutService {
       throw Exception(e.toString());
     }
   }
+
+  Future<ExerciseModel> createExercise({
+    required String name,
+    required String targetMuscle,
+    String? token,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'target_muscle': targetMuscle,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return ExerciseModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to create exercise. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<ExerciseModel> updateExercise({
+    required String exerciseId,
+    required String name,
+    required String targetMuscle,
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises/$exerciseId').replace(
+        queryParameters: {
+          'name': name,
+          'target_muscle': targetMuscle,
+        },
+      );
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return ExerciseModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to update exercise. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> deleteExercise({
+    required String exerciseId,
+    String? token,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises/$exerciseId'),
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 204) {
+        return;
+      } else if (response.statusCode == 422) {
+        final data = jsonDecode(response.body);
+        final detail = data['detail'];
+        String errorMsg = 'Validation/Restriction Error';
+        if (detail is List && detail.isNotEmpty) {
+          errorMsg = detail[0]['msg'] ?? errorMsg;
+        } else if (detail is String) {
+          errorMsg = detail;
+        }
+        throw Exception(errorMsg);
+      } else {
+        throw Exception('Failed to delete exercise. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
 }
+
