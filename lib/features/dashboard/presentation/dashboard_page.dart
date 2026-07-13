@@ -5,7 +5,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/flash_message.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/exercise_controller.dart';
+import '../../workout/controllers/workout_history_controller.dart';
 import '../../workout/models/exercise_model.dart';
+import '../../workout/models/workout_session_model.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -17,7 +19,7 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   int _currentIndex = 0;
 
-  final List<String> _titles = ['Dashboard', 'Workouts', 'Profile'];
+  final List<String> _titles = ['Dashboard', 'Workouts', 'Exercises', 'Profile'];
 
   Widget _buildDashboardTab() {
     return SingleChildScrollView(
@@ -180,6 +182,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildWorkoutsTab() {
+    return const _WorkoutHistoryView();
+  }
+
+  Widget _buildExercisesTab() {
     return const _ExercisesLibraryView();
   }
 
@@ -224,6 +230,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final tabs = [
       _buildDashboardTab(),
       _buildWorkoutsTab(),
+      _buildExercisesTab(),
       _buildProfileTab(),
     ];
 
@@ -248,8 +255,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_rounded),
+            icon: Icon(Icons.history_rounded),
             label: 'Workouts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center_rounded),
+            label: 'Exercises',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
@@ -903,6 +914,316 @@ class _ExerciseFormSheetState extends State<_ExerciseFormSheet> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  WORKOUT HISTORY VIEW
+// ─────────────────────────────────────────────────────────────
+
+class _WorkoutHistoryView extends ConsumerStatefulWidget {
+  const _WorkoutHistoryView();
+
+  @override
+  ConsumerState<_WorkoutHistoryView> createState() => _WorkoutHistoryViewState();
+}
+
+class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
+  final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(workoutHistoryControllerProvider.notifier).fetchNextPage();
+    }
+  }
+
+  String _formatDate(DateTime dt) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  String _formatDuration(int? minutes) {
+    if (minutes == null) return '—';
+    if (minutes < 60) return '${minutes}m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '${h}h' : '${h}h ${m}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final historyState = ref.watch(workoutHistoryControllerProvider);
+
+    return Column(
+      children: [
+        // ── Search Bar ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (v) =>
+                ref.read(workoutHistoryControllerProvider.notifier).setSearch(v),
+            style: const TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Search workouts...',
+              prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+                      onPressed: () {
+                        _searchController.clear();
+                        ref
+                            .read(workoutHistoryControllerProvider.notifier)
+                            .setSearch('');
+                        setState(() {});
+                      },
+                    )
+                  : null,
+            ),
+          ),
+        ),
+
+        // ── Content ──
+        Expanded(
+          child: historyState.isLoadingFirst
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary),
+                )
+              : historyState.errorMessage != null && historyState.sessions.isEmpty
+                  ? _buildError(historyState.errorMessage!)
+                  : historyState.sessions.isEmpty
+                      ? _buildEmpty()
+                      : RefreshIndicator(
+                          color: AppTheme.primary,
+                          backgroundColor: AppTheme.surface,
+                          onRefresh: () => ref
+                              .read(workoutHistoryControllerProvider.notifier)
+                              .fetchFirstPage(),
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                            itemCount: historyState.sessions.length +
+                                (historyState.isLoadingMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == historyState.sessions.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 24),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                        color: AppTheme.primary),
+                                  ),
+                                );
+                              }
+                              return _buildSessionCard(historyState.sessions[index]);
+                            },
+                          ),
+                        ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionCard(WorkoutSessionModel session) {
+    final date = _formatDate(session.startDateTime);
+    final duration = _formatDuration(session.durationMinutes);
+    final setCount = session.sets.length;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primary.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {},
+          splashColor: AppTheme.primary.withValues(alpha: 0.06),
+          highlightColor: AppTheme.primary.withValues(alpha: 0.03),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                // Icon container
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Text content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.title,
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _buildChip(Icons.calendar_today_rounded, date),
+                          const SizedBox(width: 10),
+                          _buildChip(Icons.timer_rounded, duration),
+                          if (setCount > 0) ...[
+                            const SizedBox(width: 10),
+                            _buildChip(Icons.repeat_rounded, '$setCount sets'),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: AppTheme.textSecondary, size: 12),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                width: 1.5,
+              ),
+            ),
+            child: const Icon(
+              Icons.history_rounded,
+              color: AppTheme.primary,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'No Workouts Yet',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Your completed workout sessions\nwill appear here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_rounded, color: AppTheme.error, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Something went wrong',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message.replaceAll('Exception: ', ''),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: () =>
+                  ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage(),
+              icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
+              label: const Text('Retry', style: TextStyle(color: AppTheme.primary)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
