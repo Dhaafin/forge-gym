@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/foreground_task_handler.dart';
+import '../../../core/utils/flash_message.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
@@ -333,7 +334,13 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
               if (success) {
                 await ForegroundServiceManager.stopService();
                 if (parentContext.mounted) {
+                  parentContext.showSuccessFlash('Workout saved successfully!');
                   Navigator.pop(parentContext); // close live session page
+                }
+              } else {
+                final error = ref.read(liveSessionControllerProvider).error ?? 'Failed to save workout';
+                if (parentContext.mounted) {
+                  parentContext.showErrorFlash(error);
                 }
               }
             },
@@ -351,6 +358,7 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
               Navigator.pop(context);
               ref.read(liveSessionControllerProvider.notifier).discardDraft();
               ForegroundServiceManager.stopService();
+              parentContext.showSuccessFlash('Workout session discarded.');
               Navigator.pop(parentContext);
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/flash_message.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
@@ -66,8 +67,16 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
 
   void _saveSession() async {
     final success = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (success) {
+      if (mounted) {
+        context.showSuccessFlash('Past session logged successfully!');
+        Navigator.pop(context);
+      }
+    } else {
+      final error = ref.read(liveSessionControllerProvider).error ?? 'Failed to save session';
+      if (mounted) {
+        context.showErrorFlash(error);
+      }
     }
   }
 

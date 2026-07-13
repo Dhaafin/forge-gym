@@ -39,23 +39,28 @@ class SessionModePickerSheet extends ConsumerWidget {
             icon: Icons.play_circle_filled_rounded,
             isPrimary: true,
             onTap: () async {
-              Navigator.pop(context);
+              final navigator = Navigator.of(context);
               
-              // Initialize foreground service if needed
-              await ForegroundServiceManager.init();
+              try {
+                await ForegroundServiceManager.init();
+              } catch (e) {
+                debugPrint("Foreground Service init failed: $e");
+              }
               
               ref.read(liveSessionControllerProvider.notifier).startLiveSession();
               final state = ref.read(liveSessionControllerProvider);
               if (state.draft != null) {
-                await ForegroundServiceManager.startService(state.draft!.title, state.draft!.startTime);
+                try {
+                  await ForegroundServiceManager.startService(state.draft!.title, state.draft!.startTime);
+                } catch (e) {
+                  debugPrint("Foreground Service start failed: $e");
+                }
               }
               
-              if (context.mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LiveSessionPage()),
-                );
-              }
+              navigator.pop();
+              navigator.push(
+                MaterialPageRoute(builder: (context) => const LiveSessionPage()),
+              );
             },
           ),
           const SizedBox(height: 16),
