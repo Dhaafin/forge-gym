@@ -18,38 +18,38 @@ class AppTheme {
       ThemeData.dark().textTheme,
     );
 
-    // Playfair Display headline styles
-    final playfairHeadlineLarge = GoogleFonts.playfairDisplay(
+    // Inter headline styles
+    final interHeadlineLarge = GoogleFonts.inter(
       color: textPrimary,
       fontSize: 32,
       fontWeight: FontWeight.w800,
       letterSpacing: -0.5,
     );
 
-    final playfairHeadlineMedium = GoogleFonts.playfairDisplay(
+    final interHeadlineMedium = GoogleFonts.inter(
       color: textPrimary,
       fontSize: 24,
       fontWeight: FontWeight.bold,
     );
 
-    final playfairHeadlineSmall = GoogleFonts.playfairDisplay(
+    final interHeadlineSmall = GoogleFonts.inter(
       color: textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.bold,
     );
 
-    final playfairTitleLarge = GoogleFonts.playfairDisplay(
+    final interTitleLarge = GoogleFonts.inter(
       color: textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.bold,
     );
 
-    // Merged text theme: Poppins for body/label/display, Playfair for headlines/titles
+    // Merged text theme: Poppins for body/label/display, Inter for headlines/titles
     final textTheme = poppinsBase.copyWith(
-      headlineLarge: playfairHeadlineLarge,
-      headlineMedium: playfairHeadlineMedium,
-      headlineSmall: playfairHeadlineSmall,
-      titleLarge: playfairTitleLarge,
+      headlineLarge: interHeadlineLarge,
+      headlineMedium: interHeadlineMedium,
+      headlineSmall: interHeadlineSmall,
+      titleLarge: interTitleLarge,
       bodyLarge: GoogleFonts.poppins(
         color: textPrimary,
         fontSize: 16,
@@ -84,7 +84,7 @@ class AppTheme {
         backgroundColor: background,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.playfairDisplay(
+        titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
