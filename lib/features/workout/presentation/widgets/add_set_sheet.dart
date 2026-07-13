@@ -47,7 +47,7 @@ class _AddSetSheetState extends ConsumerState<AddSetSheet> {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(

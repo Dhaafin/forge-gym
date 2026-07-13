@@ -12,8 +12,7 @@ class ForegroundTaskHandler extends TaskHandler {
   DateTime? _startTime;
 
   @override
-  Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    _sendPort = sendPort;
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     _startTime = timestamp;
     
     // Attempt to parse start time from data if provided
@@ -24,7 +23,7 @@ class ForegroundTaskHandler extends TaskHandler {
   }
 
   @override
-  Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {
+  void onRepeatEvent(DateTime timestamp) {
     if (_startTime != null) {
       _elapsedSeconds = timestamp.difference(_startTime!).inSeconds;
     } else {
@@ -40,13 +39,10 @@ class ForegroundTaskHandler extends TaskHandler {
       notificationTitle: 'Forge — Session Active',
       notificationText: 'Duration: $minutes:$seconds',
     );
-
-    // Send data back to UI (optional)
-    sendPort?.send(_elapsedSeconds);
   }
 
   @override
-  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
+  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     // Clean up resources when the task is destroyed
   }
 
@@ -75,18 +71,12 @@ class ForegroundServiceManager {
         channelDescription: 'Keeps your workout session active in the background.',
         channelImportance: NotificationChannelImportance.DEFAULT,
         priority: NotificationPriority.DEFAULT,
-        iconData: const NotificationIconData(
-          resType: ResourceType.mipmap,
-          resPrefix: ResourcePrefix.ic,
-          name: 'launcher',
-        ),
       ),
       iosNotificationOptions: const IOSNotificationOptions(
         showNotification: false,
         playSound: false,
       ),
       foregroundTaskOptions: const ForegroundTaskOptions(
-        interval: 1000,
         isOnceEvent: false,
         autoRunOnBoot: false,
         allowWakeLock: true,

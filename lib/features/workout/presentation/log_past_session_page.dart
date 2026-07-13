@@ -97,7 +97,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
         backgroundColor: AppTheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.x, color: Colors.white),
+          icon: Icon(LucideIcons.x, color: Colors.white),
           onPressed: () {
             ref.read(liveSessionControllerProvider.notifier).discardDraft();
             Navigator.pop(context);
@@ -203,7 +203,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                                 ),
                               );
                             },
-                            icon: const Icon(LucideIcons.plus, size: 16),
+                            icon: Icon(LucideIcons.plus, size: 16),
                             label: const Text('Set'),
                             style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
                           ),
@@ -227,7 +227,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                         builder: (context) => const AddExerciseSheet(),
                       );
                     },
-                    icon: const Icon(LucideIcons.plusCircle),
+                    icon: Icon(LucideIcons.plusCircle),
                     label: const Text('ADD EXERCISE'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
@@ -259,12 +259,12 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                 ),
                 child: state.isLoading 
                   ? const CircularProgressIndicator(color: Colors.black)
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(LucideIcons.save),
-                        SizedBox(width: 8),
-                        Text('SAVE SESSION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
+                        const SizedBox(width: 8),
+                        const Text('SAVE SESSION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
                       ],
                     ),
               ),
@@ -310,7 +310,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: AppTheme.error.withOpacity(0.2),
-        child: const Icon(LucideIcons.trash2, color: AppTheme.error),
+        child: Icon(LucideIcons.trash2, color: AppTheme.error),
       ),
       onDismissed: (_) {
         ref.read(liveSessionControllerProvider.notifier).deleteSet(set.id);
@@ -356,7 +356,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
               ),
             ),
             const SizedBox(width: 16),
-            const Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
+            Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
           ],
         ),
       ),

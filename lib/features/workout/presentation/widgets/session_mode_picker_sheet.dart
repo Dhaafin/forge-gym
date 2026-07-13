@@ -15,7 +15,7 @@ class SessionModePickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppTheme.cardDark,
+        color: AppTheme.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.all(24),
@@ -25,11 +25,11 @@ class SessionModePickerSheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.dumbbell, color: AppTheme.neonAccent),
+              const Icon(LucideIcons.dumbbell, color: AppTheme.primary),
               const SizedBox(width: 12),
               Text(
                 'Ready to train?',
-                style: AppTheme.heading2.copyWith(fontSize: 20),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
             ],
           ),
@@ -106,14 +106,14 @@ class _ModeCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isPrimary ? AppTheme.neonAccent.withOpacity(0.5) : Colors.white10,
+            color: isPrimary ? AppTheme.primary.withOpacity(0.5) : Colors.white10,
             width: isPrimary ? 2 : 1,
           ),
-          color: isPrimary ? AppTheme.neonAccent.withOpacity(0.1) : Colors.white.withOpacity(0.02),
+          color: isPrimary ? AppTheme.primary.withOpacity(0.1) : Colors.white.withOpacity(0.02),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isPrimary ? AppTheme.neonAccent : Colors.white70, size: 28),
+            Icon(icon, color: isPrimary ? AppTheme.primary : Colors.white70, size: 28),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -121,15 +121,15 @@ class _ModeCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: AppTheme.bodyLarge.copyWith(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isPrimary ? AppTheme.neonAccent : Colors.white,
+                      color: isPrimary ? AppTheme.primary : Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: AppTheme.bodyMedium.copyWith(color: Colors.white54),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white54),
                   ),
                 ],
               ),

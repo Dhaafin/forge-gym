@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_session_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final workoutServiceProvider = Provider<WorkoutService>((ref) => WorkoutService());
 
 class WorkoutService {
   Future<List<ExerciseModel>> fetchExercises({

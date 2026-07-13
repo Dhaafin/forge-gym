@@ -186,7 +186,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final token = ref.read(authControllerProvider.notifier).getToken();
+      final token = ref.read(authControllerProvider).value;
       
       final draft = state.draft!;
       final endTime = draft.isLive ? DateTime.now() : (draft.endTime ?? DateTime.now());
@@ -218,7 +218,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       await ref.read(draftSessionServiceProvider).clearDraft();
       
       // Refresh history
-      ref.read(workoutHistoryControllerProvider.notifier).refreshHistory();
+      ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
       
       state = LiveSessionState(); // Reset state
       return true;

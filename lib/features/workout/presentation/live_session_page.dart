@@ -41,7 +41,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
   void _finishWorkout() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.cardBg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => _FinishWorkoutSummarySheet(parentContext: context),
     );
@@ -78,7 +78,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
           backgroundColor: AppTheme.surface,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(LucideIcons.x, color: Colors.white),
+            icon: Icon(LucideIcons.x, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
           title: _isEditingTitle
@@ -99,7 +99,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                     children: [
                       Text(draft.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
-                      const Icon(LucideIcons.edit2, size: 16, color: AppTheme.textSecondary),
+                      Icon(LucideIcons.edit2, size: 16, color: AppTheme.textSecondary),
                     ],
                   ),
                 ),
@@ -109,11 +109,11 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.timer, size: 16, color: AppTheme.neonAccent),
+                    Icon(LucideIcons.timer, size: 16, color: AppTheme.primary),
                     const SizedBox(width: 4),
                     Text(
                       '$minutes:$seconds',
-                      style: const TextStyle(color: AppTheme.neonAccent, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'monospace'),
+                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'monospace'),
                     ),
                   ],
                 ),
@@ -152,7 +152,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                                   ),
                                 );
                               },
-                              icon: const Icon(LucideIcons.plus, size: 16),
+                              icon: Icon(LucideIcons.plus, size: 16),
                               label: const Text('Set'),
                               style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
                             ),
@@ -176,7 +176,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                           builder: (context) => const AddExerciseSheet(),
                         );
                       },
-                      icon: const Icon(LucideIcons.plusCircle),
+                      icon: Icon(LucideIcons.plusCircle),
                       label: const Text('ADD EXERCISE'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
@@ -208,12 +208,12 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                   ),
                   child: state.isLoading 
                     ? const CircularProgressIndicator(color: Colors.black)
-                    : const Row(
+                    : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(LucideIcons.flag),
-                          SizedBox(width: 8),
-                          Text('FINISH WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
+                          const SizedBox(width: 8),
+                          const Text('FINISH WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
                         ],
                       ),
                 ),
@@ -233,7 +233,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: AppTheme.error.withOpacity(0.2),
-        child: const Icon(LucideIcons.trash2, color: AppTheme.error),
+        child: Icon(LucideIcons.trash2, color: AppTheme.error),
       ),
       onDismissed: (_) {
         ref.read(liveSessionControllerProvider.notifier).deleteSet(set.id);
@@ -279,7 +279,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
               ),
             ),
             const SizedBox(width: 16),
-            const Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
+            Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
           ],
         ),
       ),
@@ -310,9 +310,9 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.trophy, color: AppTheme.primary, size: 28),
+              Icon(LucideIcons.trophy, color: AppTheme.primary, size: 28),
               const SizedBox(width: 12),
-              Text('Workout Summary', style: AppTheme.heading2.copyWith(fontSize: 20)),
+              Text('Workout Summary', style: Theme.of(context).textTheme.headlineSmall),
             ],
           ),
           const SizedBox(height: 8),
