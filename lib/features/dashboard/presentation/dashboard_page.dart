@@ -7,8 +7,9 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/exercise_controller.dart';
 import '../../workout/controllers/workout_history_controller.dart';
 import '../../workout/models/exercise_model.dart';
+import '../../workout/models/exercise_model.dart';
 import '../../workout/models/workout_session_model.dart';
-
+import '../../workout/presentation/widgets/session_mode_picker_sheet.dart';
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
@@ -239,6 +240,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         title: Text(_titles[_currentIndex]),
       ),
       body: tabs[_currentIndex],
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.black,
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const SessionModePickerSheet(),
+                );
+              },
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {

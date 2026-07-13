@@ -138,6 +138,41 @@ class WorkoutService {
     }
   }
 
+  Future<WorkoutSessionModel> createWorkoutSession({
+    required String title,
+    required String startTime,
+    required String endTime,
+    required int durationMinutes,
+    required List<Map<String, dynamic>> sets,
+    String? token,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'title': title,
+          'start_time': startTime,
+          'end_time': endTime,
+          'duration_minutes': durationMinutes,
+          'sets': sets,
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return WorkoutSessionModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to create workout session. Code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   Future<List<WorkoutSessionModel>> fetchWorkoutHistory({
     String? search,
     String sortBy = 'start_time',

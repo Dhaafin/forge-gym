@@ -35,6 +35,20 @@ class WorkoutSetModel {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'session_id': sessionId,
+      'exercise_id': exerciseId,
+      'exercise_name': exerciseName,
+      'set_number': setNumber,
+      'weight_kg': weightKg,
+      'reps': reps,
+      'set_type': setType,
+      'is_pr': isPr,
+    };
+  }
+
   WorkoutSetModel copyWith({
     String? id,
     String? sessionId,
