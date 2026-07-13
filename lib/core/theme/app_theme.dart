@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   AppTheme._();
@@ -12,6 +13,62 @@ class AppTheme {
   static const Color error = Color(0xFFFF3B30);
 
   static ThemeData get darkTheme {
+    // Base Poppins text theme seeded from dark color
+    final poppinsBase = GoogleFonts.poppinsTextTheme(
+      ThemeData.dark().textTheme,
+    );
+
+    // Playfair Display headline styles
+    final playfairHeadlineLarge = GoogleFonts.playfairDisplay(
+      color: textPrimary,
+      fontSize: 32,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.5,
+    );
+
+    final playfairHeadlineMedium = GoogleFonts.playfairDisplay(
+      color: textPrimary,
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+    );
+
+    final playfairHeadlineSmall = GoogleFonts.playfairDisplay(
+      color: textPrimary,
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+    );
+
+    final playfairTitleLarge = GoogleFonts.playfairDisplay(
+      color: textPrimary,
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+    );
+
+    // Merged text theme: Poppins for body/label/display, Playfair for headlines/titles
+    final textTheme = poppinsBase.copyWith(
+      headlineLarge: playfairHeadlineLarge,
+      headlineMedium: playfairHeadlineMedium,
+      headlineSmall: playfairHeadlineSmall,
+      titleLarge: playfairTitleLarge,
+      bodyLarge: GoogleFonts.poppins(
+        color: textPrimary,
+        fontSize: 16,
+      ),
+      bodyMedium: GoogleFonts.poppins(
+        color: textSecondary,
+        fontSize: 14,
+      ),
+      bodySmall: GoogleFonts.poppins(
+        color: textSecondary,
+        fontSize: 12,
+      ),
+      labelLarge: GoogleFonts.poppins(
+        color: textPrimary,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -22,49 +79,29 @@ class AppTheme {
         onPrimary: Colors.black,
         error: error,
       ),
-      appBarTheme: const AppBarTheme(
+      textTheme: textTheme,
+      appBarTheme: AppBarTheme(
         backgroundColor: background,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.playfairDisplay(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
       ),
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          color: textPrimary,
-          fontSize: 32,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
-        ),
-        headlineMedium: TextStyle(
-          color: textPrimary,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-        ),
-        bodyLarge: TextStyle(
-          color: textPrimary,
-          fontSize: 16,
-        ),
-        bodyMedium: TextStyle(
-          color: textSecondary,
-          fontSize: 14,
-        ),
-      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        labelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textSecondary),
+        labelStyle: GoogleFonts.poppins(color: textSecondary, fontSize: 14),
+        hintStyle: GoogleFonts.poppins(color: textSecondary, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: surface),
+          borderSide: const BorderSide(color: surface),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -87,7 +124,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
