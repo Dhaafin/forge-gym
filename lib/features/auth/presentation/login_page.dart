@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/utils/flash_message.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -37,10 +37,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
 
-    // Listen to error states to show a SnackBar
+    // Listen to error states to show a Top Flash Message
     ref.listen<AsyncValue<String?>>(authControllerProvider, (previous, next) {
       if (next is AsyncError) {
-        context.showErrorSnackBar(next.error.toString());
+        context.showErrorFlash(next.error.toString().replaceAll('Exception: ', ''));
       }
     });
 

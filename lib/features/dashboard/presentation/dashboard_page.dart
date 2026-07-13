@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/snackbar_utils.dart';
+import '../../../../core/utils/flash_message.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/exercise_controller.dart';
 import '../../workout/models/exercise_model.dart';
@@ -376,7 +376,7 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                                 selectedMuscle.value,
                               );
                           if (parentContext.mounted) {
-                            parentContext.showSuccessSnackBar('Exercise created successfully');
+                            parentContext.showSuccessFlash('Exercise created successfully');
                           }
                         } else {
                           await ref.read(exerciseControllerProvider.notifier).updateExercise(
@@ -385,13 +385,13 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                                 selectedMuscle.value,
                               );
                           if (parentContext.mounted) {
-                            parentContext.showSuccessSnackBar('Exercise updated successfully');
+                            parentContext.showSuccessFlash('Exercise updated successfully');
                           }
                         }
                         if (sheetContext.mounted) Navigator.pop(sheetContext);
                       } catch (e) {
                         if (parentContext.mounted) {
-                          parentContext.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
+                          parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
                         }
                         if (sheetContext.mounted) Navigator.pop(sheetContext);
                       }
@@ -461,11 +461,11 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                 try {
                   await ref.read(exerciseControllerProvider.notifier).deleteExercise(exercise.id);
                   if (parentContext.mounted) {
-                    parentContext.showSuccessSnackBar('Exercise deleted successfully');
+                    parentContext.showSuccessFlash('Exercise deleted successfully');
                   }
                 } catch (e) {
                   if (parentContext.mounted) {
-                    parentContext.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
+                    parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
                   }
                 }
               },
