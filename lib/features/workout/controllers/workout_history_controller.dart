@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../models/workout_session_model.dart';
 import '../services/workout_service.dart';
-import 'exercise_controller.dart';
 
 class WorkoutHistoryState {
   final List<WorkoutSessionModel> sessions;
@@ -147,7 +146,7 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
         token: token,
       );
       
-      final updatedList = state.sessions.map((s) => s.id == id ? updated : s).toList();
+      final updatedList = state.sessions.map<WorkoutSessionModel>((s) => s.id == id ? updated : s).toList();
       state = state.copyWith(sessions: updatedList);
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
@@ -181,9 +180,9 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
         token: token,
       );
 
-      final updatedList = state.sessions.map((session) {
+      final updatedList = state.sessions.map<WorkoutSessionModel>((session) {
         if (session.id == sessionId) {
-          final updatedSets = session.sets.map((set) {
+          final updatedSets = session.sets.map<WorkoutSetModel>((set) {
             return set.id == setId ? updatedSet : set;
           }).toList();
           return session.copyWith(sets: updatedSets);

@@ -7,7 +7,6 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/exercise_controller.dart';
 import '../../workout/controllers/workout_history_controller.dart';
 import '../../workout/models/exercise_model.dart';
-import '../../workout/models/exercise_model.dart';
 import '../../workout/models/workout_session_model.dart';
 import '../../workout/presentation/widgets/session_mode_picker_sheet.dart';
 class DashboardPage extends ConsumerStatefulWidget {

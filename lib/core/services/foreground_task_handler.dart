@@ -1,4 +1,3 @@
-import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 @pragma('vm:entry-point')
@@ -7,7 +6,6 @@ void startCallback() {
 }
 
 class ForegroundTaskHandler extends TaskHandler {
-  SendPort? _sendPort;
   int _elapsedSeconds = 0;
   DateTime? _startTime;
 
@@ -76,8 +74,8 @@ class ForegroundServiceManager {
         showNotification: false,
         playSound: false,
       ),
-      foregroundTaskOptions: const ForegroundTaskOptions(
-        isOnceEvent: false,
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(1000),
         autoRunOnBoot: false,
         allowWakeLock: true,
         allowWifiLock: true,

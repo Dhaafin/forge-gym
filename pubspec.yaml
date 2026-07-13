@@ -41,6 +41,7 @@ dependencies:
   flutter_foreground_task: ^9.2.2
   lucide_icons: ^0.257.0
   intl: ^0.20.3
+  uuid: ^4.3.3
 
 dev_dependencies:
   flutter_test:

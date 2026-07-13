@@ -65,12 +65,12 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
       groupedSets.putIfAbsent(set.exerciseId, () => []).add(set);
     }
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
         // App goes to background or user presses back.
         // We shouldn't stop the session if they just press back, or maybe we just minimize.
-        // Let's just minimize (pop). Session stays active in background.
-        return true;
+        // Session stays active in background.
       },
       child: Scaffold(
         backgroundColor: AppTheme.background,
@@ -180,7 +180,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                       label: const Text('ADD EXERCISE'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -195,7 +195,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppTheme.surface,
-                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
               ),
               child: SafeArea(
                 child: ElevatedButton(
@@ -232,7 +232,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: AppTheme.error.withOpacity(0.2),
+        color: AppTheme.error.withValues(alpha: 0.2),
         child: Icon(LucideIcons.trash2, color: AppTheme.error),
       ),
       onDismissed: (_) {
@@ -267,7 +267,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: set.setType == 'dropset' ? Colors.orange.withOpacity(0.2) : (set.setType == 'warmup' ? Colors.blue.withOpacity(0.2) : Colors.transparent),
+                color: set.setType == 'dropset' ? Colors.orange.withValues(alpha: 0.2) : (set.setType == 'warmup' ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(

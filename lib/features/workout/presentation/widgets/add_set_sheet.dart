@@ -114,7 +114,7 @@ class _AddSetSheetState extends ConsumerState<AddSetSheet> {
             },
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppTheme.primary.withOpacity(0.2);
+                if (states.contains(WidgetState.selected)) return AppTheme.primary.withValues(alpha: 0.2);
                 return AppTheme.surface;
               }),
               foregroundColor: WidgetStateProperty.resolveWith((states) {

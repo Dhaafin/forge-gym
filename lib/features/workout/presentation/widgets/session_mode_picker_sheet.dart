@@ -106,10 +106,10 @@ class _ModeCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isPrimary ? AppTheme.primary.withOpacity(0.5) : Colors.white10,
+            color: isPrimary ? AppTheme.primary.withValues(alpha: 0.5) : Colors.white10,
             width: isPrimary ? 2 : 1,
           ),
-          color: isPrimary ? AppTheme.primary.withOpacity(0.1) : Colors.white.withOpacity(0.02),
+          color: isPrimary ? AppTheme.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.02),
         ),
         child: Row(
           children: [

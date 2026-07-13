@@ -59,8 +59,6 @@ class ExerciseState {
   }
 }
 
-final workoutServiceProvider = Provider<WorkoutService>((ref) => WorkoutService());
-
 final exerciseControllerProvider = NotifierProvider<ExerciseController, ExerciseState>(ExerciseController.new);
 
 class ExerciseController extends Notifier<ExerciseState> {
