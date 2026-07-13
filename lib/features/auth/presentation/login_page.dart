@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/snackbar_utils.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -39,15 +40,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // Listen to error states to show a SnackBar
     ref.listen<AsyncValue<String?>>(authControllerProvider, (previous, next) {
       if (next is AsyncError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              next.error.toString(),
-              style: const TextStyle(color: Colors.white),
-            ),
-            backgroundColor: AppTheme.error,
-          ),
-        );
+        context.showErrorSnackBar(next.error.toString());
       }
     });
 

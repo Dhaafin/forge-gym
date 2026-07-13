@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/snackbar_utils.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/exercise_controller.dart';
 import '../../workout/models/exercise_model.dart';
@@ -374,22 +375,23 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                                 nameController.text.trim(),
                                 selectedMuscle.value,
                               );
+                          if (context.mounted) {
+                            context.showSuccessSnackBar('Exercise created successfully');
+                          }
                         } else {
                           await ref.read(exerciseControllerProvider.notifier).updateExercise(
                                 exercise.id,
                                 nameController.text.trim(),
                                 selectedMuscle.value,
                               );
+                          if (context.mounted) {
+                            context.showSuccessSnackBar('Exercise updated successfully');
+                          }
                         }
                         if (context.mounted) Navigator.pop(context);
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: AppTheme.error,
-                            ),
-                          );
+                          context.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
                         }
                       }
                     }
@@ -458,21 +460,11 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                 try {
                   await ref.read(exerciseControllerProvider.notifier).deleteExercise(exercise.id);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Exercise deleted successfully'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    context.showSuccessSnackBar('Exercise deleted successfully');
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(e.toString().replaceAll('Exception: ', '')),
-                        backgroundColor: AppTheme.error,
-                      ),
-                    );
+                    context.showErrorSnackBar(e.toString().replaceAll('Exception: ', ''));
                   }
                 }
               },
