@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 @pragma('vm:entry-point')
@@ -97,6 +98,12 @@ class ForegroundServiceManager {
   }
 
   static Future<void> stopService() async {
-    await FlutterForegroundTask.stopService();
+    try {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.stopService();
+      }
+    } catch (e) {
+      debugPrint("ForegroundServiceManager: stopService failed: $e");
+    }
   }
 }

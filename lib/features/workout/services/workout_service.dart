@@ -164,7 +164,7 @@ class WorkoutService {
           'duration_minutes': durationMinutes,
           'sets': sets,
         }),
-      );
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return WorkoutSessionModel.fromJson(jsonDecode(response.body));
