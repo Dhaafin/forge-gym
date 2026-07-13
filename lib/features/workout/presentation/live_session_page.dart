@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/foreground_task_handler.dart';
@@ -78,7 +77,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
           backgroundColor: AppTheme.surface,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(LucideIcons.x, color: Colors.white),
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
           title: _isEditingTitle
@@ -99,7 +98,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                     children: [
                       Text(draft.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
-                      Icon(LucideIcons.edit2, size: 16, color: AppTheme.textSecondary),
+                      const Icon(Icons.edit_rounded, size: 16, color: AppTheme.textSecondary),
                     ],
                   ),
                 ),
@@ -109,7 +108,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Row(
                   children: [
-                    Icon(LucideIcons.timer, size: 16, color: AppTheme.primary),
+                    const Icon(Icons.timer_rounded, size: 16, color: AppTheme.primary),
                     const SizedBox(width: 4),
                     Text(
                       '$minutes:$seconds',
@@ -152,7 +151,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                                   ),
                                 );
                               },
-                              icon: Icon(LucideIcons.plus, size: 16),
+                              icon: const Icon(Icons.add_rounded, size: 16),
                               label: const Text('Set'),
                               style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
                             ),
@@ -176,7 +175,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                           builder: (context) => const AddExerciseSheet(),
                         );
                       },
-                      icon: Icon(LucideIcons.plusCircle),
+                      icon: const Icon(Icons.add_circle_outline_rounded),
                       label: const Text('ADD EXERCISE'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
@@ -211,7 +210,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(LucideIcons.flag),
+                          const Icon(Icons.flag_rounded),
                           const SizedBox(width: 8),
                           const Text('FINISH WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
                         ],
@@ -233,7 +232,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: AppTheme.error.withValues(alpha: 0.2),
-        child: Icon(LucideIcons.trash2, color: AppTheme.error),
+        child: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
       ),
       onDismissed: (_) {
         ref.read(liveSessionControllerProvider.notifier).deleteSet(set.id);
@@ -279,7 +278,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
               ),
             ),
             const SizedBox(width: 16),
-            Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
+            const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white24),
           ],
         ),
       ),
@@ -310,7 +309,7 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(LucideIcons.trophy, color: AppTheme.primary, size: 28),
+              const Icon(Icons.emoji_events_rounded, color: AppTheme.primary, size: 28),
               const SizedBox(width: 12),
               Text('Workout Summary', style: Theme.of(context).textTheme.headlineSmall),
             ],

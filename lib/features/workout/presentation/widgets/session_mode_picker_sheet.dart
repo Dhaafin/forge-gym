@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../live_session_page.dart';
@@ -25,7 +24,7 @@ class SessionModePickerSheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.dumbbell, color: AppTheme.primary),
+              const Icon(Icons.fitness_center_rounded, color: AppTheme.primary),
               const SizedBox(width: 12),
               Text(
                 'Ready to train?',
@@ -37,7 +36,7 @@ class SessionModePickerSheet extends ConsumerWidget {
           _ModeCard(
             title: 'START LIVE SESSION',
             subtitle: 'Track your workout now',
-            icon: LucideIcons.playCircle,
+            icon: Icons.play_circle_filled_rounded,
             isPrimary: true,
             onTap: () async {
               Navigator.pop(context);
@@ -63,7 +62,7 @@ class SessionModePickerSheet extends ConsumerWidget {
           _ModeCard(
             title: 'LOG PAST SESSION',
             subtitle: 'Already done? Log it here',
-            icon: LucideIcons.fileText,
+            icon: Icons.description_rounded,
             isPrimary: false,
             onTap: () {
               Navigator.pop(context);
@@ -134,7 +133,7 @@ class _ModeCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(LucideIcons.chevronRight, color: Colors.white30, size: 20),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white30, size: 20),
           ],
         ),
       ),

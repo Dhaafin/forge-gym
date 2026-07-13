@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -97,7 +96,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
         backgroundColor: AppTheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(LucideIcons.x, color: Colors.white),
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
           onPressed: () {
             ref.read(liveSessionControllerProvider.notifier).discardDraft();
             Navigator.pop(context);
@@ -134,7 +133,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                       child: _buildPickerField(
                         label: 'Date',
                         value: DateFormat('dd MMM yyyy').format(draft.startTime),
-                        icon: LucideIcons.calendar,
+                        icon: Icons.calendar_today_rounded,
                         onTap: () => _selectDate(context, draft.startTime),
                       ),
                     ),
@@ -143,7 +142,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                       child: _buildPickerField(
                         label: 'Duration',
                         value: '$calculatedDuration min',
-                        icon: LucideIcons.timer,
+                        icon: Icons.timer_rounded,
                         onTap: () {
                           // Could show a dialog to manually override duration, leaving as auto-calc for simplicity based on start/end
                         },
@@ -158,7 +157,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                       child: _buildPickerField(
                         label: 'Start Time',
                         value: DateFormat('HH:mm').format(draft.startTime),
-                        icon: LucideIcons.clock,
+                        icon: Icons.access_time_rounded,
                         onTap: () => _selectTime(context, draft.startTime, true),
                       ),
                     ),
@@ -167,7 +166,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                       child: _buildPickerField(
                         label: 'End Time',
                         value: draft.endTime != null ? DateFormat('HH:mm').format(draft.endTime!) : '--:--',
-                        icon: LucideIcons.clock,
+                        icon: Icons.access_time_rounded,
                         onTap: () => _selectTime(context, draft.endTime ?? draft.startTime.add(const Duration(hours: 1)), false),
                       ),
                     ),
@@ -203,7 +202,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                                 ),
                               );
                             },
-                            icon: Icon(LucideIcons.plus, size: 16),
+                            icon: const Icon(Icons.add_rounded, size: 16),
                             label: const Text('Set'),
                             style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
                           ),
@@ -227,7 +226,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                         builder: (context) => const AddExerciseSheet(),
                       );
                     },
-                    icon: Icon(LucideIcons.plusCircle),
+                    icon: const Icon(Icons.add_circle_outline_rounded),
                     label: const Text('ADD EXERCISE'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
@@ -262,7 +261,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(LucideIcons.save),
+                        const Icon(Icons.save_rounded),
                         const SizedBox(width: 8),
                         const Text('SAVE SESSION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
                       ],
@@ -310,7 +309,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: AppTheme.error.withValues(alpha: 0.2),
-        child: Icon(LucideIcons.trash2, color: AppTheme.error),
+        child: const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
       ),
       onDismissed: (_) {
         ref.read(liveSessionControllerProvider.notifier).deleteSet(set.id);
@@ -356,7 +355,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
               ),
             ),
             const SizedBox(width: 16),
-            Icon(LucideIcons.arrowLeft, size: 16, color: Colors.white24),
+            const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white24),
           ],
         ),
       ),
