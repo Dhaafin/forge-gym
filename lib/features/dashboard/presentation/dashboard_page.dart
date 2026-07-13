@@ -932,6 +932,7 @@ class _WorkoutHistoryView extends ConsumerStatefulWidget {
 class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
+  final Set<String> _expandedIds = {};
 
   @override
   void initState() {
@@ -1046,85 +1047,322 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
     final date = _formatDate(session.startDateTime);
     final duration = _formatDuration(session.durationMinutes);
     final setCount = session.sets.length;
+    final isExpanded = _expandedIds.contains(session.id);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primary.withValues(alpha: 0.08),
-          width: 1,
+          color: isExpanded
+              ? AppTheme.primary.withValues(alpha: 0.35)
+              : AppTheme.primary.withValues(alpha: 0.08),
+          width: isExpanded ? 1.5 : 1,
         ),
+        boxShadow: isExpanded
+            ? [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {},
+          onTap: () {
+            setState(() {
+              if (isExpanded) {
+                _expandedIds.remove(session.id);
+              } else {
+                _expandedIds.add(session.id);
+              }
+            });
+          },
           splashColor: AppTheme.primary.withValues(alpha: 0.06),
           highlightColor: AppTheme.primary.withValues(alpha: 0.03),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                // Icon container
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.bolt_rounded,
-                    color: AppTheme.primary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Text content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session.title,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header row ──
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    // Icon container
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isExpanded
+                            ? AppTheme.primary.withValues(alpha: 0.18)
+                            : AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
+                      child: const Icon(
+                        Icons.bolt_rounded,
+                        color: AppTheme.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Text content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildChip(Icons.calendar_today_rounded, date),
-                          const SizedBox(width: 10),
-                          _buildChip(Icons.timer_rounded, duration),
-                          if (setCount > 0) ...[
-                            const SizedBox(width: 10),
-                            _buildChip(Icons.repeat_rounded, '$setCount sets'),
-                          ],
+                          Text(
+                            session.title,
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _buildChip(Icons.calendar_today_rounded, date),
+                              const SizedBox(width: 10),
+                              _buildChip(Icons.timer_rounded, duration),
+                              if (setCount > 0) ...[
+                                const SizedBox(width: 10),
+                                _buildChip(Icons.repeat_rounded, '$setCount sets'),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppTheme.textSecondary,
-                  size: 20,
+                    // Animated chevron
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.25 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              // ── Expandable detail panel ──
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeInOut,
+                child: isExpanded
+                    ? _buildDetailPanel(session)
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDetailPanel(WorkoutSessionModel session) {
+    final timeStyle = const TextStyle(color: AppTheme.textSecondary, fontSize: 13);
+    final labelStyle = const TextStyle(
+      color: AppTheme.textPrimary,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.8,
+    );
+
+    String? formatTime(String? raw) {
+      if (raw == null) return null;
+      final dt = DateTime.tryParse(raw)?.toLocal();
+      if (dt == null) return null;
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    }
+
+    final startStr = formatTime(session.startTime);
+    final endStr = formatTime(session.endTime);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Divider
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 18),
+          color: AppTheme.primary.withValues(alpha: 0.12),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Time range row
+              if (startStr != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDetailTile(
+                        label: 'START',
+                        value: startStr,
+                        icon: Icons.play_circle_outline_rounded,
+                      ),
+                    ),
+                    if (endStr != null) ...
+                      [
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDetailTile(
+                            label: 'END',
+                            value: endStr,
+                            icon: Icons.stop_circle_outlined,
+                          ),
+                        ),
+                      ],
+                    if (session.durationMinutes != null) ...
+                      [
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDetailTile(
+                            label: 'DURATION',
+                            value: _formatDuration(session.durationMinutes),
+                            icon: Icons.timer_outlined,
+                          ),
+                        ),
+                      ],
+                  ],
+                ),
+
+              // Sets section
+              if (session.sets.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text('SETS', style: labelStyle),
+                const SizedBox(height: 10),
+                ...session.sets.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final set = entry.value;
+                  final String setLabel = set is Map
+                      ? [
+                          if (set['exercise_name'] != null) set['exercise_name'] as String,
+                          if (set['reps'] != null) '${set['reps']} reps',
+                          if (set['weight_kg'] != null) '${set['weight_kg']} kg',
+                        ].join(' · ')
+                      : 'Set ${i + 1}';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${i + 1}',
+                              style: const TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            setLabel,
+                            style: timeStyle,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ] else ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppTheme.textSecondary,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'No set details recorded.',
+                      style: timeStyle,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailTile({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppTheme.textSecondary, size: 12),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 10,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
