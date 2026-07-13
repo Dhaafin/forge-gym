@@ -27,7 +27,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +206,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           const SizedBox(height: 48),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error.withOpacity(0.1),
+              backgroundColor: AppTheme.error.withValues(alpha: 0.1),
               foregroundColor: AppTheme.error,
               side: const BorderSide(color: AppTheme.error, width: 1),
             ),

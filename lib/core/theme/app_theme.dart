@@ -17,7 +17,6 @@ class AppTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: background,
       colorScheme: const ColorScheme.dark(
-        background: background,
         surface: surface,
         primary: primary,
         onPrimary: Colors.black,
@@ -37,7 +36,7 @@ class AppTheme {
         headlineLarge: TextStyle(
           color: textPrimary,
           fontSize: 32,
-          fontWeight: FontWeight.extrabold,
+          fontWeight: FontWeight.w800,
           letterSpacing: -0.5,
         ),
         headlineMedium: TextStyle(

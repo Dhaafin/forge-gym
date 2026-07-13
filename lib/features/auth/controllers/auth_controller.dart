@@ -4,21 +4,18 @@ import '../services/auth_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
-final authControllerProvider = StateNotifierProvider<AuthController, AsyncValue<String?>>((ref) {
-  final authService = ref.watch(authServiceProvider);
-  return AuthController(authService);
-});
+final authControllerProvider = NotifierProvider<AuthController, AsyncValue<String?>>(AuthController.new);
 
-class AuthController extends StateNotifier<AsyncValue<String?>> {
-  final AuthService _authService;
+class AuthController extends Notifier<AsyncValue<String?>> {
   static const String _tokenKey = 'auth_token';
 
-  AuthController(this._authService) : super(const AsyncValue.data(null)) {
+  @override
+  AsyncValue<String?> build() {
     _checkToken();
+    return const AsyncValue.loading();
   }
 
   Future<void> _checkToken() async {
-    state = const AsyncValue.loading();
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_tokenKey);
@@ -31,7 +28,8 @@ class AuthController extends StateNotifier<AsyncValue<String?>> {
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
     try {
-      final token = await _authService.login(email, password);
+      final authService = ref.read(authServiceProvider);
+      final token = await authService.login(email, password);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, token);
       state = AsyncValue.data(token);
