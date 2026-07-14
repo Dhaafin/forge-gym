@@ -51,7 +51,6 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
   @override
   LiveSessionState build() {
-    // Attempt to load draft on initialization
     _loadDraft();
     return LiveSessionState();
   }
@@ -62,7 +61,6 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (draft != null) {
       state = state.copyWith(draft: draft);
       if (draft.isLive) {
-        // Calculate elapsed time based on start time
         final elapsed = DateTime.now().difference(draft.startTime);
         state = state.copyWith(elapsedTime: elapsed);
         _startTimer();
@@ -109,6 +107,13 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     state = state.copyWith(clearDraft: true, elapsedTime: Duration.zero);
   }
 
+  /// Hard-resets controller to initial state. Call this AFTER the UI
+  /// has finished navigating away from LiveSessionPage.
+  void resetState() {
+    _timer?.cancel();
+    state = LiveSessionState();
+  }
+
   void updateTitle(String newTitle) {
     if (state.draft == null) return;
     state = state.copyWith(
@@ -116,10 +121,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     );
     _saveDraftToLocal();
   }
-  
+
   void updatePastSessionTimes({DateTime? startTime, DateTime? endTime, int? durationMinutes}) {
     if (state.draft == null || state.draft!.isLive) return;
-    
     state = state.copyWith(
       draft: state.draft!.copyWith(
         startTime: startTime ?? state.draft!.startTime,
@@ -138,25 +142,23 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   }) {
     if (state.draft == null) return;
 
-    // Calculate set number for this exercise
     final currentSets = state.draft!.sets;
     final exerciseSets = currentSets.where((s) => s.exerciseId == exercise.id).toList();
     final nextSetNumber = exerciseSets.length + 1;
 
     final newSet = WorkoutSetModel(
       id: _uuid.v4(),
-      sessionId: state.draft!.id, // temporary
+      sessionId: state.draft!.id,
       exerciseId: exercise.id,
       exerciseName: exercise.name,
       setNumber: nextSetNumber,
       weightKg: weightKg,
       reps: reps,
       setType: setType,
-      isPr: false, // PR logic is handled backend-side normally, default to false
+      isPr: false,
     );
 
     final updatedSets = List<WorkoutSetModel>.from(currentSets)..add(newSet);
-    
     state = state.copyWith(
       draft: state.draft!.copyWith(sets: updatedSets),
     );
@@ -165,21 +167,21 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
   void deleteSet(String setId) {
     if (state.draft == null) return;
-
-    final currentSets = state.draft!.sets;
-    final updatedSets = currentSets.where((s) => s.id != setId).toList();
-
-    // Re-number remaining sets for the same exercise? Usually, we might just leave them,
-    // or re-number. Let's re-number for consistency.
-    // However, it's complex because we need to know the exercise ID of the deleted set.
-    // For simplicity right now, we just remove it. Re-numbering can be added later if needed.
-    
+    final updatedSets = state.draft!.sets.where((s) => s.id != setId).toList();
     state = state.copyWith(
       draft: state.draft!.copyWith(sets: updatedSets),
     );
     _saveDraftToLocal();
   }
 
+  /// Submits the workout session to the API.
+  ///
+  /// Returns `true` on success. State will have `isLoading: false` and the
+  /// draft intact — the **caller** is responsible for navigating away and
+  /// then calling [resetState] to clean up.
+  ///
+  /// Returns `false` on failure. State will have `isLoading: false` and
+  /// an [error] message set.
   Future<bool> finishWorkout() async {
     if (state.draft == null) return false;
 
@@ -187,19 +189,14 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      // Safely extract token — AsyncValue.value returns null if loading/error state.
-      // Use whenData or check the state directly.
-      final authState = ref.read(authControllerProvider);
-      final token = authState.asData?.value;
-      debugPrint('[LiveSession] Submitting workout. Token present: ${token != null}');
+      final token = ref.read(authControllerProvider).asData?.value;
+      debugPrint('[LiveSession] Token present: ${token != null}');
 
       final draft = state.draft!;
       final endTime = draft.isLive ? DateTime.now() : (draft.endTime ?? DateTime.now());
-
-      int durationMinutes = draft.durationMinutes ?? 0;
-      if (draft.isLive) {
-        durationMinutes = endTime.difference(draft.startTime).inMinutes;
-      }
+      final durationMinutes = draft.isLive
+          ? endTime.difference(draft.startTime).inMinutes
+          : (draft.durationMinutes ?? 0);
 
       final setsJson = draft.sets.map((s) => {
         'exercise_id': s.exerciseId,
@@ -209,10 +206,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         'set_type': s.setType,
       }).toList();
 
-      debugPrint('[LiveSession] Sending ${setsJson.length} sets to API.');
+      debugPrint('[LiveSession] Sending ${setsJson.length} sets.');
 
-      final workoutService = ref.read(workoutServiceProvider);
-      await workoutService.createWorkoutSession(
+      await ref.read(workoutServiceProvider).createWorkoutSession(
         title: draft.title,
         startTime: draft.startTime.toUtc().toIso8601String(),
         endTime: endTime.toUtc().toIso8601String(),
@@ -221,21 +217,23 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         token: token,
       );
 
-      // Successfully saved
+      // Clear persisted draft and refresh history.
+      // Do NOT touch in-memory state here — the UI caller navigates first,
+      // then calls resetState() to clean up.
       await ref.read(draftSessionServiceProvider).clearDraft();
-
-      // Refresh history
       ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
 
-      state = LiveSessionState(); // Reset state
+      debugPrint('[LiveSession] Workout saved successfully.');
+      state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {
       debugPrint('[LiveSession] finishWorkout failed: $e');
-      final errorMessage = e.toString().replaceAll('Exception: ', '');
-      state = state.copyWith(isLoading: false, error: errorMessage);
-      if (state.draft?.isLive == true) {
-        _startTimer(); // resume timer on fail
-      }
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      // Resume timer if this was a live session.
+      if (state.draft?.isLive == true) _startTimer();
       return false;
     }
   }
@@ -246,8 +244,6 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       if (state.draft != null) {
         final elapsed = DateTime.now().difference(state.draft!.startTime);
         state = state.copyWith(elapsedTime: elapsed);
-        
-        // Auto-save every 30 seconds
         if (timer.tick % 30 == 0) {
           _saveDraftToLocal();
         }
