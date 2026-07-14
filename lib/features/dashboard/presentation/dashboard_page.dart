@@ -337,7 +337,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
       ),
-      body: tabs[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: tabs,
+      ),
       floatingActionButton: _currentIndex == 1
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,

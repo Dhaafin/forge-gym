@@ -409,8 +409,10 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
                         Navigator.of(pageContext).pop(true);
                       }
                       
-                      // 3. Now that the UI has navigated away, reset state.
-                      notifier.resetState();
+                      // 3. Now that the UI has navigated away, wait for animation then reset state.
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        notifier.resetState();
+                      });
                     } else {
                       final error =
                           ref.read(liveSessionControllerProvider).error ??

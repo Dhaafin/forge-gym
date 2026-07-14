@@ -71,7 +71,9 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
       if (mounted) {
         Navigator.pop(context, true);
       }
-      ref.read(liveSessionControllerProvider.notifier).resetState();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        ref.read(liveSessionControllerProvider.notifier).resetState();
+      });
     } else {
       final error = ref.read(liveSessionControllerProvider).error ?? 'Failed to save session';
       if (mounted) {

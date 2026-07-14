@@ -208,7 +208,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
       debugPrint('[LiveSession] Sending ${setsJson.length} sets.');
 
-      await ref.read(workoutServiceProvider).createWorkoutSession(
+      final newSession = await ref.read(workoutServiceProvider).createWorkoutSession(
         title: draft.title,
         startTime: draft.startTime.toUtc().toIso8601String(),
         endTime: endTime.toUtc().toIso8601String(),
@@ -217,11 +217,11 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         token: token,
       );
 
-      // Clear persisted draft and refresh history.
-      // Do NOT touch in-memory state here — the UI caller navigates first,
+      // Clear persisted draft and add the new session locally (best practice).
+      // Do NOT touch in-memory draft here — the UI caller navigates first,
       // then calls resetState() to clean up.
       await ref.read(draftSessionServiceProvider).clearDraft();
-      ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
+      ref.read(workoutHistoryControllerProvider.notifier).addSession(newSession);
 
       debugPrint('[LiveSession] Workout saved successfully.');
       state = state.copyWith(isLoading: false);

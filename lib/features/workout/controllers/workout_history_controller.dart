@@ -135,6 +135,13 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
     fetchFirstPage();
   }
 
+  void addSession(WorkoutSessionModel session) {
+    state = state.copyWith(
+      sessions: [session, ...state.sessions],
+      offset: state.offset + 1,
+    );
+  }
+
   Future<void> updateSession(String id, String title, int durationMinutes) async {
     try {
       final token = ref.read(authControllerProvider).value;
