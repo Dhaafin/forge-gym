@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/authenticated_http_client.dart';
 import '../services/auth_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
@@ -11,8 +12,21 @@ class AuthController extends Notifier<AsyncValue<String?>> {
 
   @override
   AsyncValue<String?> build() {
+    // Wire up the 401 handler: when any API call gets 401, auto-logout.
+    final httpClient = ref.read(authenticatedHttpClientProvider);
+    httpClient.onUnauthorized = _onUnauthorized;
+
     _checkToken();
     return const AsyncValue.loading();
+  }
+
+  /// Called automatically when any API call receives a 401 Unauthorized.
+  void _onUnauthorized() {
+    // Only trigger logout if we're currently authenticated (have a token).
+    final current = state;
+    if (current is AsyncData<String?> && current.value != null) {
+      logout();
+    }
   }
 
   Future<void> _checkToken() async {
@@ -39,13 +53,12 @@ class AuthController extends Notifier<AsyncValue<String?>> {
   }
 
   Future<void> logout() async {
-    state = const AsyncValue.loading();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (_) {
+      // Best-effort: even if clearing fails, force state to logged-out.
     }
+    state = const AsyncValue.data(null);
   }
 }

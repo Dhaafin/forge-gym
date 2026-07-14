@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/controllers/auth_controller.dart';
 import '../models/workout_session_model.dart';
 import '../services/workout_service.dart';
 
@@ -76,14 +75,12 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
       hasReachedMax: false,
     );
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
 
       final results = await service.fetchWorkoutHistory(
         search: state.searchQuery.trim().isEmpty ? null : state.searchQuery,
         limit: _limit,
         offset: 0,
-        token: token,
       );
 
       state = state.copyWith(
@@ -105,14 +102,12 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
 
     state = state.copyWith(isLoadingMore: true);
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
 
       final results = await service.fetchWorkoutHistory(
         search: state.searchQuery.trim().isEmpty ? null : state.searchQuery,
         limit: _limit,
         offset: state.offset,
-        token: token,
       );
 
       state = state.copyWith(
@@ -144,13 +139,11 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
 
   Future<void> updateSession(String id, String title, int durationMinutes) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
       final updated = await service.updateWorkoutSession(
         sessionId: id,
         title: title,
         durationMinutes: durationMinutes,
-        token: token,
       );
       
       final updatedList = state.sessions.map<WorkoutSessionModel>((s) => s.id == id ? updated : s).toList();
@@ -163,9 +156,8 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
 
   Future<void> deleteSession(String id) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
-      await service.deleteWorkoutSession(sessionId: id, token: token);
+      await service.deleteWorkoutSession(sessionId: id);
       
       final updatedList = state.sessions.where((s) => s.id != id).toList();
       state = state.copyWith(sessions: updatedList);
@@ -177,14 +169,12 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
 
   Future<void> updateSet(String sessionId, String setId, double weightKg, int reps, String setType) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
       final updatedSet = await service.updateWorkoutSet(
         setId: setId,
         weightKg: weightKg,
         reps: reps,
         setType: setType,
-        token: token,
       );
 
       final updatedList = state.sessions.map<WorkoutSessionModel>((session) {
@@ -206,9 +196,8 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
 
   Future<void> deleteSet(String sessionId, String setId) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final service = ref.read(workoutServiceProvider);
-      await service.deleteWorkoutSet(setId: setId, token: token);
+      await service.deleteWorkoutSet(setId: setId);
 
       final updatedList = state.sessions.map((session) {
         if (session.id == sessionId) {

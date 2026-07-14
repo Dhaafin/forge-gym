@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/controllers/auth_controller.dart';
 import '../models/exercise_model.dart';
 import '../services/workout_service.dart';
 
@@ -74,7 +73,6 @@ class ExerciseController extends Notifier<ExerciseState> {
   Future<void> fetchFirstPage() async {
     state = state.copyWith(isLoadingFirst: true, errorMessage: null, offset: 0, hasReachedMax: false);
     try {
-      final token = ref.read(authControllerProvider).value;
       final workoutService = ref.read(workoutServiceProvider);
 
       // If filtering by muscle group (and it's not 'All'), we can pass the muscle name
@@ -91,7 +89,6 @@ class ExerciseController extends Notifier<ExerciseState> {
         search: query,
         limit: _limit,
         offset: 0,
-        token: token,
       );
 
       state = state.copyWith(
@@ -113,7 +110,6 @@ class ExerciseController extends Notifier<ExerciseState> {
 
     state = state.copyWith(isLoadingMore: true);
     try {
-      final token = ref.read(authControllerProvider).value;
       final workoutService = ref.read(workoutServiceProvider);
 
       String query = state.searchQuery;
@@ -125,7 +121,6 @@ class ExerciseController extends Notifier<ExerciseState> {
         search: query,
         limit: _limit,
         offset: state.offset,
-        token: token,
       );
 
       state = state.copyWith(
@@ -156,12 +151,10 @@ class ExerciseController extends Notifier<ExerciseState> {
 
   Future<void> createExercise(String name, String targetMuscle) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final workoutService = ref.read(workoutServiceProvider);
       final newExercise = await workoutService.createExercise(
         name: name,
         targetMuscle: targetMuscle,
-        token: token,
       );
       state = state.copyWith(
         exercises: [newExercise, ...state.exercises],
@@ -174,13 +167,11 @@ class ExerciseController extends Notifier<ExerciseState> {
 
   Future<void> updateExercise(String id, String name, String targetMuscle) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final workoutService = ref.read(workoutServiceProvider);
       final updated = await workoutService.updateExercise(
         exerciseId: id,
         name: name,
         targetMuscle: targetMuscle,
-        token: token,
       );
       final updatedList = state.exercises.map((e) => e.id == id ? updated : e).toList();
       state = state.copyWith(exercises: updatedList);
@@ -192,9 +183,8 @@ class ExerciseController extends Notifier<ExerciseState> {
 
   Future<void> deleteExercise(String id) async {
     try {
-      final token = ref.read(authControllerProvider).value;
       final workoutService = ref.read(workoutServiceProvider);
-      await workoutService.deleteExercise(exerciseId: id, token: token);
+      await workoutService.deleteExercise(exerciseId: id);
       final updatedList = state.exercises.where((e) => e.id != id).toList();
       state = state.copyWith(exercises: updatedList);
     } catch (e) {

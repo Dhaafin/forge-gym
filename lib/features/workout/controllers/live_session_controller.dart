@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../auth/controllers/auth_controller.dart';
 import '../models/draft_session_model.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_session_model.dart';
@@ -189,9 +188,6 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final token = ref.read(authControllerProvider).asData?.value;
-      debugPrint('[LiveSession] Token present: ${token != null}');
-
       final draft = state.draft!;
       final endTime = draft.isLive ? DateTime.now() : (draft.endTime ?? DateTime.now());
       final durationMinutes = draft.isLive
@@ -214,7 +210,6 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         endTime: endTime.toUtc().toIso8601String(),
         durationMinutes: durationMinutes,
         sets: setsJson,
-        token: token,
       );
 
       // Clear persisted draft and add the new session locally (best practice).

@@ -1,20 +1,25 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/services/authenticated_http_client.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_session_model.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final workoutServiceProvider = Provider<WorkoutService>((ref) => WorkoutService());
+final workoutServiceProvider = Provider<WorkoutService>((ref) {
+  return WorkoutService(ref.read(authenticatedHttpClientProvider));
+});
 
 class WorkoutService {
+  final AuthenticatedHttpClient _client;
+
+  WorkoutService(this._client);
+
   Future<List<ExerciseModel>> fetchExercises({
     String? search,
     String sortBy = 'name',
     String order = 'asc',
     int limit = 20,
     int offset = 0,
-    String? token,
   }) async {
     try {
       final queryParams = {
@@ -28,13 +33,7 @@ class WorkoutService {
       final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises')
           .replace(queryParameters: queryParams);
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -42,6 +41,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to fetch exercises. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -50,16 +51,11 @@ class WorkoutService {
   Future<ExerciseModel> createExercise({
     required String name,
     required String targetMuscle,
-    String? token,
   }) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+        extraHeaders: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': name,
           'target_muscle': targetMuscle,
@@ -71,6 +67,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to create exercise. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -80,7 +78,6 @@ class WorkoutService {
     required String exerciseId,
     required String name,
     required String targetMuscle,
-    String? token,
   }) async {
     try {
       final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises/$exerciseId').replace(
@@ -90,19 +87,15 @@ class WorkoutService {
         },
       );
 
-      final response = await http.put(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _client.put(uri);
 
       if (response.statusCode == 200) {
         return ExerciseModel.fromJson(jsonDecode(response.body));
       } else {
         throw Exception('Failed to update exercise. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -110,15 +103,10 @@ class WorkoutService {
 
   Future<void> deleteExercise({
     required String exerciseId,
-    String? token,
   }) async {
     try {
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/exercises/$exerciseId'),
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
       );
 
       if (response.statusCode == 204) {
@@ -136,6 +124,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to delete exercise. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
@@ -147,16 +137,11 @@ class WorkoutService {
     required String endTime,
     required int durationMinutes,
     required List<Map<String, dynamic>> sets,
-    String? token,
   }) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
+        extraHeaders: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'title': title,
           'start_time': startTime,
@@ -164,13 +149,16 @@ class WorkoutService {
           'duration_minutes': durationMinutes,
           'sets': sets,
         }),
-      ).timeout(const Duration(seconds: 15));
+        timeout: const Duration(seconds: 15),
+      );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return WorkoutSessionModel.fromJson(jsonDecode(response.body));
       } else {
         throw Exception('Failed to create workout session. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -182,7 +170,6 @@ class WorkoutService {
     String order = 'desc',
     int limit = 20,
     int offset = 0,
-    String? token,
   }) async {
     try {
       final queryParams = {
@@ -196,13 +183,7 @@ class WorkoutService {
       final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/history')
           .replace(queryParameters: queryParams);
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -210,6 +191,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to fetch workout history. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -219,7 +202,6 @@ class WorkoutService {
     required String sessionId,
     required String title,
     required int durationMinutes,
-    String? token,
   }) async {
     try {
       final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId').replace(
@@ -229,19 +211,15 @@ class WorkoutService {
         },
       );
 
-      final response = await http.put(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _client.put(uri);
 
       if (response.statusCode == 200) {
         return WorkoutSessionModel.fromJson(jsonDecode(response.body));
       } else {
         throw Exception('Failed to update session. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -249,15 +227,10 @@ class WorkoutService {
 
   Future<void> deleteWorkoutSession({
     required String sessionId,
-    String? token,
   }) async {
     try {
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId'),
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
       );
 
       if (response.statusCode == 204) {
@@ -265,6 +238,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to delete session. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -275,7 +250,6 @@ class WorkoutService {
     required double weightKg,
     required int reps,
     required String setType,
-    String? token,
   }) async {
     try {
       final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/set/$setId').replace(
@@ -286,19 +260,15 @@ class WorkoutService {
         },
       );
 
-      final response = await http.put(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await _client.put(uri);
 
       if (response.statusCode == 200) {
         return WorkoutSetModel.fromJson(jsonDecode(response.body));
       } else {
         throw Exception('Failed to update workout set. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -306,15 +276,10 @@ class WorkoutService {
 
   Future<void> deleteWorkoutSet({
     required String setId,
-    String? token,
   }) async {
     try {
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/set/$setId'),
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
       );
 
       if (response.statusCode == 204) {
@@ -322,6 +287,8 @@ class WorkoutService {
       } else {
         throw Exception('Failed to delete workout set. Code: ${response.statusCode}');
       }
+    } on UnauthorizedException {
+      rethrow;
     } catch (e) {
       throw Exception(e.toString());
     }
