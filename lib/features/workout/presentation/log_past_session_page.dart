@@ -69,9 +69,9 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
     final success = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
     if (success) {
       if (mounted) {
-        context.showSuccessFlash('Past session logged successfully!');
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
+      ref.read(liveSessionControllerProvider.notifier).resetState();
     } else {
       final error = ref.read(liveSessionControllerProvider).error ?? 'Failed to save session';
       if (mounted) {
@@ -108,7 +108,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
           icon: const Icon(Icons.close_rounded, color: Colors.white),
           onPressed: () {
             ref.read(liveSessionControllerProvider.notifier).discardDraft();
-            Navigator.pop(context);
+            Navigator.pop(context, false);
           },
         ),
         title: const Text('Log Past Session', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

@@ -45,8 +45,7 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      // Pass the page's Navigator, not the sheet's Navigator.
-      builder: (_) => _FinishWorkoutSummarySheet(pageNavigator: Navigator.of(context)),
+      builder: (_) => _FinishWorkoutSummarySheet(pageContext: context),
     );
   }
 
@@ -348,11 +347,11 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
 // ---------------------------------------------------------------------------
 
 class _FinishWorkoutSummarySheet extends ConsumerWidget {
-  /// The [NavigatorState] of the LiveSessionPage, captured before the sheet
-  /// is pushed so we can pop both the sheet and the page safely.
-  final NavigatorState pageNavigator;
+  /// The [BuildContext] of the LiveSessionPage, captured before the sheet
+  /// is pushed so we can pop the page safely and show flash messages on a mounted context.
+  final BuildContext pageContext;
 
-  const _FinishWorkoutSummarySheet({required this.pageNavigator});
+  const _FinishWorkoutSummarySheet({required this.pageContext});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -404,23 +403,22 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
                     if (success) {
                       // 1. Close this sheet.
                       if (context.mounted) Navigator.of(context).pop();
-                      // 2. Close the LiveSessionPage using its navigator.
-                      if (pageNavigator.canPop()) pageNavigator.pop();
-                      // 3. Cancel the persistent notification.
-                      await NotificationManager.cancelWorkoutNotification();
-                      // 4. Show success flash on whatever page is now on top.
-                      // Use the sheet's context messenger if still valid,
-                      // otherwise fall back to the pageNavigator's overlay.
-                      pageNavigator.context.showSuccessFlash(
-                          'Workout saved successfully!');
-                      // 5. Now that the UI has navigated away, reset state.
+                      
+                      // 2. Close the LiveSessionPage using its navigator and return true (success).
+                      if (pageContext.mounted) {
+                        Navigator.of(pageContext).pop(true);
+                      }
+                      
+                      // 3. Now that the UI has navigated away, reset state.
                       notifier.resetState();
                     } else {
                       final error =
                           ref.read(liveSessionControllerProvider).error ??
                               'Failed to save workout';
                       if (context.mounted) Navigator.of(context).pop();
-                      pageNavigator.context.showErrorFlash(error);
+                      if (pageContext.mounted) {
+                        pageContext.showErrorFlash(error);
+                      }
                     }
                   },
             style: ElevatedButton.styleFrom(
@@ -446,9 +444,9 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
             onPressed: () {
               Navigator.of(context).pop(); // close sheet
               ref.read(liveSessionControllerProvider.notifier).discardDraft();
-              NotificationManager.cancelWorkoutNotification();
-              pageNavigator.context.showSuccessFlash('Workout session discarded.');
-              if (pageNavigator.canPop()) pageNavigator.pop(); // close page
+              if (pageContext.mounted) {
+                Navigator.of(pageContext).pop(false); // pop page returning false
+              }
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),
             child: const Text('Discard Session'),

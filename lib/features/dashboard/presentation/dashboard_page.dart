@@ -9,6 +9,10 @@ import '../../workout/controllers/workout_history_controller.dart';
 import '../../workout/models/exercise_model.dart';
 import '../../workout/models/workout_session_model.dart';
 import '../../workout/presentation/widgets/session_mode_picker_sheet.dart';
+import '../../workout/presentation/live_session_page.dart';
+import '../../workout/presentation/log_past_session_page.dart';
+import '../../workout/controllers/live_session_controller.dart';
+import '../../../../core/services/notification_manager.dart';
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
@@ -243,13 +247,68 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.black,
-              onPressed: () {
-                showModalBottomSheet(
+              onPressed: () async {
+                final mode = await showModalBottomSheet<String>(
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (context) => const SessionModePickerSheet(),
                 );
+
+                if (!mounted || mode == null) return;
+
+                if (mode == 'live') {
+                  try {
+                    await NotificationManager.init();
+                  } catch (e) {
+                    debugPrint("Notification Manager init failed: $e");
+                  }
+
+                  ref.read(liveSessionControllerProvider.notifier).startLiveSession();
+                  final state = ref.read(liveSessionControllerProvider);
+                  if (state.draft != null) {
+                    try {
+                      await NotificationManager.showWorkoutNotification(
+                        title: state.draft!.title,
+                        startTime: state.draft!.startTime,
+                      );
+                    } catch (e) {
+                      debugPrint("Local Notification start failed: $e");
+                    }
+                  }
+
+                  if (!mounted) return;
+                  final saved = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LiveSessionPage()),
+                  );
+
+                  if (!mounted) return;
+                  if (saved == true) {
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (mounted) context.showSuccessFlash('Workout saved successfully!');
+                  } else if (saved == false) {
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (mounted) context.showSuccessFlash('Workout session discarded.');
+                  }
+                } else if (mode == 'past') {
+                  ref.read(liveSessionControllerProvider.notifier).startPastSession();
+
+                  if (!mounted) return;
+                  final saved = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LogPastSessionPage()),
+                  );
+
+                  if (!mounted) return;
+                  if (saved == true) {
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (mounted) context.showSuccessFlash('Past session logged successfully!');
+                  } else if (saved == false) {
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (mounted) context.showSuccessFlash('Workout session discarded.');
+                  }
+                }
               },
               child: const Icon(Icons.add_rounded),
             )

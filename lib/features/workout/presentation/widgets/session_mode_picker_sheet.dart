@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../live_session_page.dart';
-import '../log_past_session_page.dart';
-import '../../controllers/live_session_controller.dart';
-import '../../../../core/services/notification_manager.dart';
 
 class SessionModePickerSheet extends ConsumerWidget {
   const SessionModePickerSheet({super.key});
@@ -38,32 +34,8 @@ class SessionModePickerSheet extends ConsumerWidget {
             subtitle: 'Track your workout now',
             icon: Icons.play_circle_filled_rounded,
             isPrimary: true,
-            onTap: () async {
-              final navigator = Navigator.of(context);
-              
-              try {
-                await NotificationManager.init();
-              } catch (e) {
-                debugPrint("Notification Manager init failed: $e");
-              }
-              
-              ref.read(liveSessionControllerProvider.notifier).startLiveSession();
-              final state = ref.read(liveSessionControllerProvider);
-              if (state.draft != null) {
-                try {
-                  await NotificationManager.showWorkoutNotification(
-                    title: state.draft!.title,
-                    startTime: state.draft!.startTime,
-                  );
-                } catch (e) {
-                  debugPrint("Local Notification start failed: $e");
-                }
-              }
-              
-              navigator.pop();
-              navigator.push(
-                MaterialPageRoute(builder: (context) => const LiveSessionPage()),
-              );
+            onTap: () {
+              Navigator.pop(context, 'live');
             },
           ),
           const SizedBox(height: 16),
@@ -73,12 +45,7 @@ class SessionModePickerSheet extends ConsumerWidget {
             icon: Icons.description_rounded,
             isPrimary: false,
             onTap: () {
-              Navigator.pop(context);
-              ref.read(liveSessionControllerProvider.notifier).startPastSession();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LogPastSessionPage()),
-              );
+              Navigator.pop(context, 'past');
             },
           ),
           const SizedBox(height: 24),
