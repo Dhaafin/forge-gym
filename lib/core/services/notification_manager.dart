@@ -23,7 +23,7 @@ class NotificationManager {
 
     try {
       await _notificationsPlugin.initialize(
-        initializationSettings,
+        settings: initializationSettings,
       );
     } catch (e) {
       debugPrint("NotificationManager: failed to initialize: $e");
@@ -67,10 +67,10 @@ class NotificationManager {
 
     try {
       await _notificationsPlugin.show(
-        888, // Unique notification ID for workout session
-        title,
-        'Workout in progress...',
-        details,
+        id: 888, // Unique notification ID for workout session
+        title: title,
+        body: 'Workout in progress...',
+        notificationDetails: details,
       );
     } catch (e) {
       debugPrint("NotificationManager: failed to show notification: $e");
@@ -79,7 +79,7 @@ class NotificationManager {
 
   static Future<void> cancelWorkoutNotification() async {
     try {
-      await _notificationsPlugin.cancel(888);
+      await _notificationsPlugin.cancel(id: 888);
     } catch (e) {
       debugPrint("NotificationManager: failed to cancel notification: $e");
     }
