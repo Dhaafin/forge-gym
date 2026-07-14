@@ -328,17 +328,19 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
           ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context); // close sheet
+            onPressed: state.isLoading ? null : () async {
               final success = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
               if (success) {
                 await NotificationManager.cancelWorkoutNotification();
                 if (parentContext.mounted) {
                   parentContext.showSuccessFlash('Workout saved successfully!');
-                  Navigator.pop(parentContext); // close live session page
+                  Navigator.pop(parentContext); // close live session page (sheet auto-closes with it)
                 }
               } else {
                 final error = ref.read(liveSessionControllerProvider).error ?? 'Failed to save workout';
+                if (context.mounted) {
+                  Navigator.pop(context); // close sheet
+                }
                 if (parentContext.mounted) {
                   parentContext.showErrorFlash(error);
                 }
@@ -350,7 +352,13 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            child: const Text('SAVE WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: state.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                  )
+                : const Text('SAVE WORKOUT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
           const SizedBox(height: 12),
           TextButton(

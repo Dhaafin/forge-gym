@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -186,14 +187,18 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final token = ref.read(authControllerProvider).value;
-      
+      // Safely extract token — AsyncValue.value returns null if loading/error state.
+      // Use whenData or check the state directly.
+      final authState = ref.read(authControllerProvider);
+      final token = authState.asData?.value;
+      debugPrint('[LiveSession] Submitting workout. Token present: ${token != null}');
+
       final draft = state.draft!;
       final endTime = draft.isLive ? DateTime.now() : (draft.endTime ?? DateTime.now());
-      
+
       int durationMinutes = draft.durationMinutes ?? 0;
       if (draft.isLive) {
-         durationMinutes = endTime.difference(draft.startTime).inMinutes;
+        durationMinutes = endTime.difference(draft.startTime).inMinutes;
       }
 
       final setsJson = draft.sets.map((s) => {
@@ -203,6 +208,8 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         'reps': s.reps,
         'set_type': s.setType,
       }).toList();
+
+      debugPrint('[LiveSession] Sending ${setsJson.length} sets to API.');
 
       final workoutService = ref.read(workoutServiceProvider);
       await workoutService.createWorkoutSession(
@@ -216,14 +223,16 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
       // Successfully saved
       await ref.read(draftSessionServiceProvider).clearDraft();
-      
+
       // Refresh history
       ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
-      
+
       state = LiveSessionState(); // Reset state
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      debugPrint('[LiveSession] finishWorkout failed: $e');
+      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(isLoading: false, error: errorMessage);
       if (state.draft?.isLive == true) {
         _startTimer(); // resume timer on fail
       }
