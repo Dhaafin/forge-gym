@@ -5,7 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../live_session_page.dart';
 import '../log_past_session_page.dart';
 import '../../controllers/live_session_controller.dart';
-import '../../../../core/services/foreground_task_handler.dart';
+import '../../../../core/services/notification_manager.dart';
 
 class SessionModePickerSheet extends ConsumerWidget {
   const SessionModePickerSheet({super.key});
@@ -42,18 +42,21 @@ class SessionModePickerSheet extends ConsumerWidget {
               final navigator = Navigator.of(context);
               
               try {
-                await ForegroundServiceManager.init();
+                await NotificationManager.init();
               } catch (e) {
-                debugPrint("Foreground Service init failed: $e");
+                debugPrint("Notification Manager init failed: $e");
               }
               
               ref.read(liveSessionControllerProvider.notifier).startLiveSession();
               final state = ref.read(liveSessionControllerProvider);
               if (state.draft != null) {
                 try {
-                  await ForegroundServiceManager.startService(state.draft!.title, state.draft!.startTime);
+                  await NotificationManager.showWorkoutNotification(
+                    title: state.draft!.title,
+                    startTime: state.draft!.startTime,
+                  );
                 } catch (e) {
-                  debugPrint("Foreground Service start failed: $e");
+                  debugPrint("Local Notification start failed: $e");
                 }
               }
               

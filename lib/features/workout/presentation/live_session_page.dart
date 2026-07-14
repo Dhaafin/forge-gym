@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/foreground_task_handler.dart';
+import '../../../core/services/notification_manager.dart';
 import '../../../core/utils/flash_message.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
@@ -332,7 +332,7 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
               Navigator.pop(context); // close sheet
               final success = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
               if (success) {
-                await ForegroundServiceManager.stopService();
+                await NotificationManager.cancelWorkoutNotification();
                 if (parentContext.mounted) {
                   parentContext.showSuccessFlash('Workout saved successfully!');
                   Navigator.pop(parentContext); // close live session page
@@ -357,7 +357,7 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
             onPressed: () {
               Navigator.pop(context);
               ref.read(liveSessionControllerProvider.notifier).discardDraft();
-              ForegroundServiceManager.stopService();
+              NotificationManager.cancelWorkoutNotification();
               parentContext.showSuccessFlash('Workout session discarded.');
               Navigator.pop(parentContext);
             },
