@@ -6,6 +6,12 @@ class NotificationManager {
       FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
+    final isSupported = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS ||
+         defaultTargetPlatform == TargetPlatform.macOS);
+    if (!isSupported) return;
+
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -46,6 +52,12 @@ class NotificationManager {
     required String title,
     required DateTime startTime,
   }) async {
+    final isSupported = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS ||
+         defaultTargetPlatform == TargetPlatform.macOS);
+    if (!isSupported) return;
+
     final workoutStartTimeInEpoch = startTime.millisecondsSinceEpoch;
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -78,6 +90,12 @@ class NotificationManager {
   }
 
   static Future<void> cancelWorkoutNotification() async {
+    final isSupported = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS ||
+         defaultTargetPlatform == TargetPlatform.macOS);
+    if (!isSupported) return;
+
     try {
       await _notificationsPlugin.cancel(id: 888);
     } catch (e) {

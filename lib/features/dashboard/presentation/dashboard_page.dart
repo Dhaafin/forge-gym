@@ -26,18 +26,54 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   final List<String> _titles = ['Dashboard', 'Workouts', 'Exercises', 'Profile'];
 
   Widget _buildDashboardTab() {
+    final historyState = ref.watch(workoutHistoryControllerProvider);
+    final userEmail = ref.read(authControllerProvider).value?.split('.').last ?? 'Athlete';
+
+    // Calculate stats
+    int workoutsThisWeek = 0;
+    int totalVolume = 0;
+    
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+
+    for (var session in historyState.sessions) {
+      if (session.startDateTime.isAfter(startOfWeek)) {
+        workoutsThisWeek++;
+      }
+      for (var set in session.sets) {
+        totalVolume += (set.weightKg * set.reps).toInt();
+      }
+    }
+
+    final recentSessions = historyState.sessions.take(3).toList();
+
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Welcome Card
+          // Header Welcome Card (Glassmorphism inspired)
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primary.withValues(alpha: 0.15),
+                  AppTheme.primary.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,31 +81,46 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Welcome Back, Athlete!',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppTheme.primary,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Welcome Back, $userEmail!',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                            ),
+                      ),
                     ),
-                    const Icon(
-                      Icons.emoji_events_rounded,
-                      color: AppTheme.primary,
-                      size: 28,
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.bolt_rounded,
+                        color: AppTheme.primary,
+                        size: 32,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const Text(
                   'Your consistency is paying off. Ready to crush your goals today?',
-                  style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
+                  style: TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 16),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
+          
           Text(
-            'Today\'s Stats',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20),
+            'Your Progress',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           // Stats Row
@@ -77,51 +128,95 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             children: [
               Expanded(
                 child: _buildStatCard(
-                  icon: Icons.local_fire_department_rounded,
-                  label: 'Calories',
-                  value: '420 kcal',
-                  color: Colors.orange,
+                  icon: Icons.fitness_center_rounded,
+                  label: 'Total Volume',
+                  value: '$totalVolume kg',
+                  color: const Color(0xFFF59E0B),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
-                  icon: Icons.timer_rounded,
-                  label: 'Duration',
-                  value: '45 mins',
-                  color: Colors.blue,
+                  icon: Icons.calendar_today_rounded,
+                  label: 'This Week',
+                  value: '$workoutsThisWeek sessions',
+                  color: const Color(0xFF3B82F6),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Today's Activity Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Today\'s Schedule',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          const SizedBox(height: 32),
+          
+          // Recent Activity Card
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Activity',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 16),
-                _buildActivityItem('Leg Day Workout', '08:00 AM - 09:30 AM', true),
-                _buildActivityItem('Post-Workout Meal', '10:00 AM', false),
-              ],
-            ),
+              ),
+              if (historyState.sessions.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _currentIndex = 1; // Go to Workouts tab
+                    });
+                  },
+                  child: const Text('View All', style: TextStyle(color: AppTheme.primary)),
+                ),
+            ],
           ),
+          const SizedBox(height: 16),
+          
+          if (historyState.isLoadingFirst)
+            const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          else if (recentSessions.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(32),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.directions_run_rounded, size: 48, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No recent workouts',
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Time to hit the gym!',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...recentSessions.map((session) => _buildActivityItem(
+                  session.title,
+                  '${_formatDate(session.startDateTime)} • ${session.durationMinutes ?? 0} mins',
+                  true,
+                )),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+      return 'Today';
+    } else if (date.year == now.year && date.month == now.month && date.day == now.day - 1) {
+      return 'Yesterday';
+    }
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildStatCard({
