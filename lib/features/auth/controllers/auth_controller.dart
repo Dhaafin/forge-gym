@@ -1,15 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/authenticated_http_client.dart';
+import '../../../core/services/token_storage_service.dart';
 import '../services/auth_service.dart';
-
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
 final authControllerProvider = NotifierProvider<AuthController, AsyncValue<String?>>(AuthController.new);
 
 class AuthController extends Notifier<AsyncValue<String?>> {
-  static const String _tokenKey = 'auth_token';
-
   @override
   AsyncValue<String?> build() {
     // Wire up the 401 handler: when any API call gets 401, auto-logout.
@@ -31,8 +27,8 @@ class AuthController extends Notifier<AsyncValue<String?>> {
 
   Future<void> _checkToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
+      final tokenStorage = ref.read(tokenStorageServiceProvider);
+      final token = await tokenStorage.getToken();
       state = AsyncValue.data(token);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -44,8 +40,8 @@ class AuthController extends Notifier<AsyncValue<String?>> {
     try {
       final authService = ref.read(authServiceProvider);
       final token = await authService.login(email, password);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
+      final tokenStorage = ref.read(tokenStorageServiceProvider);
+      await tokenStorage.saveToken(token);
       state = AsyncValue.data(token);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -54,8 +50,8 @@ class AuthController extends Notifier<AsyncValue<String?>> {
 
   Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
+      final tokenStorage = ref.read(tokenStorageServiceProvider);
+      await tokenStorage.deleteToken();
     } catch (_) {
       // Best-effort: even if clearing fails, force state to logged-out.
     }

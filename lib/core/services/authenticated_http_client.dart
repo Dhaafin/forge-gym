@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'token_storage_service.dart';
 
 /// Exception thrown when the server responds with 401 Unauthorized.
 /// This signals that the token has expired and the user must re-authenticate.
@@ -21,18 +21,17 @@ class UnauthorizedException implements Exception {
 ///
 /// This eliminates the need to pass tokens manually through controllers and services.
 class AuthenticatedHttpClient {
-  static const String _tokenKey = 'auth_token';
+  final TokenStorageService _tokenStorage;
 
   /// Optional callback invoked when a 401 is detected.
   /// The AuthController sets this during initialization to trigger logout.
   VoidCallback? onUnauthorized;
 
-  AuthenticatedHttpClient();
+  AuthenticatedHttpClient(this._tokenStorage);
 
   /// Retrieves the stored JWT token, or null if not present.
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return await _tokenStorage.getToken();
   }
 
   /// Builds the standard headers, injecting Bearer token if available.
@@ -136,5 +135,5 @@ class AuthenticatedHttpClient {
 /// Global Riverpod provider for the authenticated HTTP client.
 /// This is a singleton that persists across the app lifecycle.
 final authenticatedHttpClientProvider = Provider<AuthenticatedHttpClient>((ref) {
-  return AuthenticatedHttpClient();
+  return AuthenticatedHttpClient(ref.read(tokenStorageServiceProvider));
 });

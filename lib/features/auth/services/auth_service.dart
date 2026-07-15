@@ -1,11 +1,22 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
 
+final authServiceProvider = Provider<AuthService>((ref) {
+  final client = http.Client();
+  ref.onDispose(() => client.close());
+  return AuthService(client);
+});
+
 class AuthService {
+  final http.Client _client;
+
+  AuthService(this._client);
+
   Future<String> login(String email, String password) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse(ApiConstants.loginUrl),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
