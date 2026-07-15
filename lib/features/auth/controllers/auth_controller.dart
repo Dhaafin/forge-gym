@@ -28,7 +28,7 @@ class AuthController extends Notifier<AsyncValue<String?>> {
   Future<void> _checkToken() async {
     try {
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      final token = await tokenStorage.getToken();
+      final token = await tokenStorage.getAccessToken();
       state = AsyncValue.data(token);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -39,22 +39,26 @@ class AuthController extends Notifier<AsyncValue<String?>> {
     state = const AsyncValue.loading();
     try {
       final authService = ref.read(authServiceProvider);
-      final token = await authService.login(email, password);
+      final tokens = await authService.login(email, password);
       final tokenStorage = ref.read(tokenStorageServiceProvider);
-      await tokenStorage.saveToken(token);
-      state = AsyncValue.data(token);
+      await tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken);
+      state = AsyncValue.data(tokens.accessToken);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
   }
 
   Future<void> logout() async {
+    final tokenStorage = ref.read(tokenStorageServiceProvider);
     try {
-      final tokenStorage = ref.read(tokenStorageServiceProvider);
-      await tokenStorage.deleteToken();
+      final refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken != null) {
+        await ref.read(authServiceProvider).logout(refreshToken);
+      }
     } catch (_) {
-      // Best-effort: even if clearing fails, force state to logged-out.
+      // Best-effort. Local logout must proceed regardless.
     }
+    await tokenStorage.deleteTokens();
     state = const AsyncValue.data(null);
   }
 }

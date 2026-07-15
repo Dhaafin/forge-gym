@@ -3,27 +3,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class TokenStorageService {
   final FlutterSecureStorage _storage;
-  static const String _tokenKey = 'auth_token';
+  static const String _accessTokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'refresh_token';
 
   TokenStorageService(this._storage);
 
-  /// Stores the JWT token securely.
-  Future<void> saveToken(String token) async {
-    await _storage.write(key: _tokenKey, value: token);
+  Future<void> saveTokens(String accessToken, String refreshToken) async {
+    await _storage.write(key: _accessTokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
-  /// Retrieves the secured JWT token.
-  Future<String?> getToken() async {
-    return await _storage.read(key: _tokenKey);
+  Future<String?> getAccessToken() async {
+    return await _storage.read(key: _accessTokenKey);
   }
 
-  /// Deletes the secured JWT token.
-  Future<void> deleteToken() async {
-    await _storage.delete(key: _tokenKey);
+  Future<String?> getRefreshToken() async {
+    return await _storage.read(key: _refreshTokenKey);
+  }
+
+  Future<void> deleteTokens() async {
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
   }
 }
 
-/// Global provider for the secure token storage service.
 final tokenStorageServiceProvider = Provider<TokenStorageService>((ref) {
   return TokenStorageService(const FlutterSecureStorage());
 });
