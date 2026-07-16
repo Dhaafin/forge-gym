@@ -431,8 +431,9 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
       (s) => s.id == widget.sessionId,
       orElse: () => WorkoutSessionModel(
         id: widget.sessionId,
+        userId: '',
         title: 'Workout Session',
-        startDateTime: DateTime.now(),
+        startTime: DateTime.now().toIso8601String(),
         sets: [],
       ),
     );
