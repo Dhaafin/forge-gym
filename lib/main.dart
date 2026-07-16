@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/auth/presentation/login_page.dart';
 import 'features/dashboard/presentation/dashboard_page.dart';
+import 'core/widgets/forge_spinner.dart';
 
 void main() {
   runApp(
@@ -20,25 +21,21 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
 
-    return MaterialApp(
-      title: 'Forge Gym',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: authState.when(
-        data: (token) {
-          if (token != null) {
-            return const DashboardPage();
-          }
-          return const LoginPage();
-        },
-        loading: () => const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(
-              color: AppTheme.primary,
-            ),
-          ),
-        ),
-        error: (error, _) => Scaffold(
+    Widget getHomeScreen() {
+      // If it has data (even if currently loading or in error state), use the data to route.
+      // This prevents login/logout transitions from popping up fullscreen loading/error screens.
+      if (authState.hasValue) {
+        final token = authState.value;
+        if (token != null) {
+          return const DashboardPage();
+        }
+        return const LoginPage();
+      }
+
+      // Initial boot failed (e.g. secure storage lookup failed)
+      if (authState.hasError) {
+        final error = authState.error!;
+        return Scaffold(
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -61,8 +58,24 @@ class MyApp extends ConsumerWidget {
               ),
             ),
           ),
+        );
+      }
+
+      // Initial boot loading screen (checking secure storage on startup)
+      return const Scaffold(
+        body: Center(
+          child: ForgeSpinner(
+            size: 40,
+          ),
         ),
-      ),
+      );
+    }
+
+    return MaterialApp(
+      title: 'Forge Gym',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      home: getHomeScreen(),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/flash_message.dart';
 import '../controllers/auth_controller.dart';
+import '../../../../core/widgets/forge_spinner.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -218,13 +219,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 ElevatedButton(
                                   onPressed: isLoading ? null : _submit,
                                   child: isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.black,
-                                            strokeWidth: 2.5,
-                                          ),
+                                      ? const ForgeSpinner(
+                                          color: Colors.black,
+                                          size: 24,
+                                          strokeWidth: 2.5,
                                         )
                                       : const Text('LOG IN'),
                                 ),
