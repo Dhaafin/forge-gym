@@ -950,7 +950,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
   }
 
   Widget _buildAiCoachSection() {
-    final aiCoachAsync = ref.watch(aiCoachAnalysisProvider(widget.sessionId));
+    final state = ref.watch(aiCoachNotifierProvider(widget.sessionId));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -973,90 +973,199 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             ],
           ),
           const SizedBox(height: 12),
-          aiCoachAsync.when(
-            data: (analysis) {
-              if (analysis.response.trim().isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.primary.withValues(alpha: 0.08),
-                      Colors.white.withValues(alpha: 0.02),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.15),
-                    width: 1.2,
-                  ),
+          if (state.status == AiCoachStatus.idle)
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primary.withValues(alpha: 0.15),
+                    AppTheme.primary.withValues(alpha: 0.05),
+                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 14),
-                        const SizedBox(width: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 20),
+                            SizedBox(width: 10),
+                            Text(
+                              'ANALYZE WORKOUT WITH AI',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
                         Text(
-                          'Coach Feedback (${analysis.modelUsed.split('/').last})',
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                          'Get personalized overload advice & performance feedback',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      analysis.response,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 13.5,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              );
-            },
-            loading: () => Container(
+              ),
+            )
+          else if (state.status == AiCoachStatus.loading)
+            Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.primary.withValues(alpha: 0.05),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   width: 1,
                 ),
               ),
-              child: const Column(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                state.loadingMessage,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${(state.progress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: state.progress,
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      color: AppTheme.primary,
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (state.status == AiCoachStatus.success && state.data != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primary.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.02),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.15),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      ForgeSkeleton(height: 12, width: 12),
-                      SizedBox(width: 8),
-                      ForgeSkeleton(height: 12, width: 140),
+                      const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Coach Feedback (${state.data!.modelUsed.split('/').last})',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, color: AppTheme.textSecondary, size: 16),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis();
+                        },
+                      ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  ForgeSkeleton(height: 14, width: double.infinity),
-                  SizedBox(height: 8),
-                  ForgeSkeleton(height: 14, width: double.infinity),
-                  SizedBox(height: 8),
-                  ForgeSkeleton(height: 14, width: 180),
+                  const SizedBox(height: 12),
+                  Text(
+                    state.data!.response,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 13.5,
+                      height: 1.5,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            error: (err, stack) => Container(
+            )
+          else if (state.status == AiCoachStatus.error)
+            Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1085,7 +1194,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          err.toString().replaceAll('Exception: ', ''),
+                          state.errorMessage ?? 'Unknown error occurred',
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 11,
@@ -1097,12 +1206,12 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                   const SizedBox(width: 12),
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
-                    onPressed: () => ref.invalidate(aiCoachAnalysisProvider(widget.sessionId)),
+                    onPressed: () => ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis(),
                   ),
                 ],
               ),
             ),
-          ),
+          const SizedBox(height: 28),
         ],
       ),
     );
