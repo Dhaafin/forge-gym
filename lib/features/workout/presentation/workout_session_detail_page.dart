@@ -950,7 +950,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
   }
 
   Widget _buildAiCoachSection() {
-    final state = ref.watch(aiCoachNotifierProvider(widget.sessionId));
+    final allStates = ref.watch(aiCoachNotifierProvider);
+    final state = allStates[widget.sessionId] ?? AiCoachState();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1000,7 +1001,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis();
+                    ref.read(aiCoachNotifierProvider.notifier).fetchAnalysis(widget.sessionId);
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: const Padding(
@@ -1147,7 +1148,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () {
-                          ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis();
+                          ref.read(aiCoachNotifierProvider.notifier).fetchAnalysis(widget.sessionId);
                         },
                       ),
                     ],
@@ -1206,7 +1207,7 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
                   const SizedBox(width: 12),
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
-                    onPressed: () => ref.read(aiCoachNotifierProvider(widget.sessionId).notifier).fetchAnalysis(),
+                    onPressed: () => ref.read(aiCoachNotifierProvider.notifier).fetchAnalysis(widget.sessionId),
                   ),
                 ],
               ),

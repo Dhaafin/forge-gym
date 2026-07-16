@@ -39,27 +39,34 @@ class AiCoachState {
   }
 }
 
-class AiCoachNotifier extends FamilyNotifier<AiCoachState, String> {
-  Timer? _progressTimer;
+class AiCoachController extends Notifier<Map<String, AiCoachState>> {
+  final Map<String, Timer?> _timers = {};
 
   @override
-  AiCoachState build(String arg) {
+  Map<String, AiCoachState> build() {
     ref.onDispose(() {
-      _progressTimer?.cancel();
+      for (final timer in _timers.values) {
+        timer?.cancel();
+      }
+      _timers.clear();
     });
-    return AiCoachState();
+    return const {};
   }
 
-  Future<void> fetchAnalysis() async {
-    final sessionId = arg;
-    if (state.status == AiCoachStatus.loading) return;
+  Future<void> fetchAnalysis(String sessionId) async {
+    final currentMap = Map<String, AiCoachState>.from(state);
+    final currentState = currentMap[sessionId] ?? AiCoachState();
 
-    _progressTimer?.cancel();
-    state = AiCoachState(
+    if (currentState.status == AiCoachStatus.loading) return;
+
+    _timers[sessionId]?.cancel();
+    
+    currentMap[sessionId] = AiCoachState(
       status: AiCoachStatus.loading,
       progress: 0.0,
       loadingMessage: 'Initializing AI Coach...',
     );
+    state = currentMap;
 
     // List of gamified steps
     final steps = [
@@ -72,7 +79,14 @@ class AiCoachNotifier extends FamilyNotifier<AiCoachState, String> {
     double currentProgress = 0.0;
     int currentStepIndex = 0;
 
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 150), (timer) {
+    _timers[sessionId] = Timer.periodic(const Duration(milliseconds: 150), (timer) {
+      final updatedMap = Map<String, AiCoachState>.from(state);
+      final sessionState = updatedMap[sessionId];
+      if (sessionState == null) {
+        timer.cancel();
+        return;
+      }
+
       if (currentProgress < 0.95) {
         currentProgress += 0.02;
         if (currentProgress > 0.95) currentProgress = 0.95;
@@ -85,10 +99,11 @@ class AiCoachNotifier extends FamilyNotifier<AiCoachState, String> {
           }
         }
 
-        state = state.copyWith(
+        updatedMap[sessionId] = sessionState.copyWith(
           progress: currentProgress,
           loadingMessage: steps[currentStepIndex].message,
         );
+        state = updatedMap;
       }
     });
 
@@ -96,32 +111,49 @@ class AiCoachNotifier extends FamilyNotifier<AiCoachState, String> {
       final workoutService = ref.read(workoutServiceProvider);
       final analysis = await workoutService.fetchAiCoachAnalysis(sessionId: sessionId);
 
-      _progressTimer?.cancel();
+      _timers[sessionId]?.cancel();
+      _timers.remove(sessionId);
+
+      final updatedMap = Map<String, AiCoachState>.from(state);
+      final sessionState = updatedMap[sessionId] ?? AiCoachState();
 
       // Fast forward progress to 100%
-      state = state.copyWith(
+      updatedMap[sessionId] = sessionState.copyWith(
         progress: 1.0,
         loadingMessage: 'Analysis complete!',
       );
+      state = updatedMap;
 
       await Future.delayed(const Duration(milliseconds: 300));
 
-      state = state.copyWith(
+      final finalMap = Map<String, AiCoachState>.from(state);
+      final finalSessionState = finalMap[sessionId] ?? AiCoachState();
+      finalMap[sessionId] = finalSessionState.copyWith(
         status: AiCoachStatus.success,
         data: analysis,
       );
+      state = finalMap;
     } catch (e) {
-      _progressTimer?.cancel();
-      state = state.copyWith(
+      _timers[sessionId]?.cancel();
+      _timers.remove(sessionId);
+
+      final updatedMap = Map<String, AiCoachState>.from(state);
+      final sessionState = updatedMap[sessionId] ?? AiCoachState();
+      updatedMap[sessionId] = sessionState.copyWith(
         status: AiCoachStatus.error,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
+      state = updatedMap;
     }
   }
 
-  void reset() {
-    _progressTimer?.cancel();
-    state = AiCoachState();
+  void reset(String sessionId) {
+    _timers[sessionId]?.cancel();
+    _timers.remove(sessionId);
+
+    final updatedMap = Map<String, AiCoachState>.from(state);
+    updatedMap.remove(sessionId);
+    state = updatedMap;
   }
 }
 
@@ -133,6 +165,6 @@ class _LoadingStep {
   _LoadingStep(this.start, this.end, this.message);
 }
 
-final aiCoachNotifierProvider = NotifierProvider.family<AiCoachNotifier, AiCoachState, String>(() {
-  return AiCoachNotifier();
-});
+final aiCoachNotifierProvider = NotifierProvider<AiCoachController, Map<String, AiCoachState>>(
+  AiCoachController.new,
+);
