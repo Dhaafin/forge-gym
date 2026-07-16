@@ -17,6 +17,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,27 +26,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
-      ref.read(authControllerProvider.notifier).login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        await ref.read(authControllerProvider.notifier).login(
+              _emailController.text.trim(),
+              _passwordController.text,
+            );
+      } catch (e) {
+        if (mounted) {
+          context.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authControllerProvider);
-
-    // Listen to error states to show a Top Flash Message
-    ref.listen<AsyncValue<String?>>(authControllerProvider, (previous, next) {
-      if (next is AsyncError) {
-        context.showErrorFlash(next.error.toString().replaceAll('Exception: ', ''));
-      }
-    });
-
-    final isLoading = authState.isLoading;
+    final isLoading = _isLoading;
 
     return Scaffold(
       body: Stack(

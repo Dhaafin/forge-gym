@@ -36,16 +36,11 @@ class AuthController extends Notifier<AsyncValue<String?>> {
   }
 
   Future<void> login(String email, String password) async {
-    state = AsyncValue<String?>.loading().copyWithPrevious(state);
-    try {
-      final authService = ref.read(authServiceProvider);
-      final tokens = await authService.login(email, password);
-      final tokenStorage = ref.read(tokenStorageServiceProvider);
-      await tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken);
-      state = AsyncValue.data(tokens.accessToken);
-    } catch (e, st) {
-      state = AsyncValue<String?>.error(e, st).copyWithPrevious(state);
-    }
+    final authService = ref.read(authServiceProvider);
+    final tokens = await authService.login(email, password);
+    final tokenStorage = ref.read(tokenStorageServiceProvider);
+    await tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken);
+    state = AsyncValue.data(tokens.accessToken);
   }
 
   Future<void> logout() async {
