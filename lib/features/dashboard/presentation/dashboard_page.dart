@@ -12,6 +12,7 @@ import '../../workout/controllers/live_session_controller.dart';
 import '../../../../core/services/notification_manager.dart';
 import '../../workout/presentation/widgets/exercises_library_view.dart';
 import '../../workout/presentation/widgets/workout_history_view.dart';
+import '../../workout/presentation/workout_session_detail_page.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -376,15 +377,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   }
 
                   if (!mounted) return;
-                  final saved = await Navigator.push<bool>(
+                  final saved = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const LiveSessionPage()),
                   );
 
                   if (!mounted) return;
-                  if (saved == true) {
-                    await Future.delayed(const Duration(seconds: 2));
-                    if (mounted) context.showSuccessFlash('Workout saved successfully!');
+                  if (saved is WorkoutSessionModel) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => WorkoutSessionDetailPage(sessionId: saved.id),
+                      ),
+                    );
+                    context.showSuccessFlash('Workout saved successfully!');
                   } else if (saved == false) {
                     await Future.delayed(const Duration(seconds: 2));
                     if (mounted) context.showSuccessFlash('Workout session discarded.');
@@ -393,15 +399,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ref.read(liveSessionControllerProvider.notifier).startPastSession();
 
                   if (!mounted) return;
-                  final saved = await Navigator.push<bool>(
+                  final saved = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const LogPastSessionPage()),
                   );
 
                   if (!mounted) return;
-                  if (saved == true) {
-                    await Future.delayed(const Duration(seconds: 2));
-                    if (mounted) context.showSuccessFlash('Past session logged successfully!');
+                  if (saved is WorkoutSessionModel) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => WorkoutSessionDetailPage(sessionId: saved.id),
+                      ),
+                    );
+                    context.showSuccessFlash('Past session logged successfully!');
                   } else if (saved == false) {
                     await Future.delayed(const Duration(seconds: 2));
                     if (mounted) context.showSuccessFlash('Workout session discarded.');

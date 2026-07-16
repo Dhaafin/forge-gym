@@ -66,10 +66,10 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
   }
 
   void _saveSession() async {
-    final success = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
-    if (success) {
+    final newSession = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
+    if (newSession != null) {
       if (mounted) {
-        Navigator.pop(context, true);
+        Navigator.pop(context, newSession);
       }
       Future.delayed(const Duration(milliseconds: 300), () {
         ref.read(liveSessionControllerProvider.notifier).resetState();

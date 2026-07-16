@@ -179,10 +179,9 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   /// draft intact — the **caller** is responsible for navigating away and
   /// then calling [resetState] to clean up.
   ///
-  /// Returns `false` on failure. State will have `isLoading: false` and
-  /// an [error] message set.
-  Future<bool> finishWorkout() async {
-    if (state.draft == null) return false;
+  /// Returns the saved [WorkoutSessionModel] on success, or `null` on failure.
+  Future<WorkoutSessionModel?> finishWorkout() async {
+    if (state.draft == null) return null;
 
     _timer?.cancel();
     state = state.copyWith(isLoading: true, clearError: true);
@@ -220,7 +219,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
       debugPrint('[LiveSession] Workout saved successfully.');
       state = state.copyWith(isLoading: false);
-      return true;
+      return newSession;
     } catch (e) {
       debugPrint('[LiveSession] finishWorkout failed: $e');
       state = state.copyWith(
@@ -229,7 +228,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       );
       // Resume timer if this was a live session.
       if (state.draft?.isLive == true) _startTimer();
-      return false;
+      return null;
     }
   }
 

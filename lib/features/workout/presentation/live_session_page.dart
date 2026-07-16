@@ -398,29 +398,29 @@ class _FinishWorkoutSummarySheet extends ConsumerWidget {
                 : () async {
                     final notifier =
                         ref.read(liveSessionControllerProvider.notifier);
-                    final success = await notifier.finishWorkout();
+                    final newSession = await notifier.finishWorkout();
 
-                    if (success) {
-                      // 1. Close this sheet.
-                      if (context.mounted) Navigator.of(context).pop();
-                      
-                      // 2. Close the LiveSessionPage using its navigator and return true (success).
-                      if (pageContext.mounted) {
-                        Navigator.of(pageContext).pop(true);
-                      }
-                      
-                      // 3. Now that the UI has navigated away, wait for animation then reset state.
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        notifier.resetState();
-                      });
+                    if (newSession != null) {
+                       // 1. Close this sheet.
+                       if (context.mounted) Navigator.of(context).pop();
+                       
+                       // 2. Close the LiveSessionPage returning newSession.
+                       if (pageContext.mounted) {
+                         Navigator.of(pageContext).pop(newSession);
+                       }
+                       
+                       // 3. Now that the UI has navigated away, wait for animation then reset state.
+                       Future.delayed(const Duration(milliseconds: 300), () {
+                         notifier.resetState();
+                       });
                     } else {
-                      final error =
-                          ref.read(liveSessionControllerProvider).error ??
-                              'Failed to save workout';
-                      if (context.mounted) Navigator.of(context).pop();
-                      if (pageContext.mounted) {
-                        pageContext.showErrorFlash(error);
-                      }
+                       final error =
+                           ref.read(liveSessionControllerProvider).error ??
+                               'Failed to save workout';
+                       if (context.mounted) Navigator.of(context).pop();
+                       if (pageContext.mounted) {
+                         pageContext.showErrorFlash(error);
+                       }
                     }
                   },
             style: ElevatedButton.styleFrom(
