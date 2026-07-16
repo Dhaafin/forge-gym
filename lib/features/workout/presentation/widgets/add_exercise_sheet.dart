@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/forge_search_bar.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model.dart';
 import 'add_set_sheet.dart';
@@ -55,17 +56,14 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
               const Text('Add Exercise', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: TextField(
+                child: ForgeSearchBar(
                   controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search exercise...',
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-                    filled: true,
-                    fillColor: AppTheme.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
+                  hintText: 'Search exercise...',
                   onSubmitted: (val) {
                     ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+                  },
+                  onClear: () {
+                    ref.read(exerciseControllerProvider.notifier).setSearch('');
                   },
                 ),
               ),

@@ -13,6 +13,8 @@ import '../../workout/presentation/live_session_page.dart';
 import '../../workout/presentation/log_past_session_page.dart';
 import '../../workout/controllers/live_session_controller.dart';
 import '../../../../core/services/notification_manager.dart';
+import '../../../../core/widgets/forge_search_bar.dart';
+
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
@@ -573,27 +575,15 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: TextField(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
+            child: ForgeSearchBar(
               controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search exercise...',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textSecondary),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(exerciseControllerProvider.notifier).setSearch('');
-                        },
-                      )
-                    : null,
-              ),
-              onChanged: (val) {
-                setState(() {});
-              },
+              hintText: 'Search exercise...',
               onSubmitted: (val) {
                 ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+              },
+              onClear: () {
+                ref.read(exerciseControllerProvider.notifier).setSearch('');
               },
             ),
           ),
@@ -676,7 +666,7 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
                           )
                         : GridView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                               crossAxisSpacing: 16,
@@ -1150,28 +1140,17 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
       children: [
         // ── Search Bar ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: TextField(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
+          child: ForgeSearchBar(
             controller: _searchController,
+            hintText: 'Search workouts...',
             onChanged: (v) =>
                 ref.read(workoutHistoryControllerProvider.notifier).setSearch(v),
-            style: const TextStyle(color: AppTheme.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Search workouts...',
-              prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
-                      onPressed: () {
-                        _searchController.clear();
-                        ref
-                            .read(workoutHistoryControllerProvider.notifier)
-                            .setSearch('');
-                        setState(() {});
-                      },
-                    )
-                  : null,
-            ),
+            onClear: () {
+              ref
+                  .read(workoutHistoryControllerProvider.notifier)
+                  .setSearch('');
+            },
           ),
         ),
 
@@ -1193,7 +1172,7 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
                               .fetchFirstPage(),
                           child: ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
                             itemCount: historyState.sessions.length +
                                 (historyState.isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
