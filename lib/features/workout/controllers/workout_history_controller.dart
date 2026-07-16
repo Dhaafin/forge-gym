@@ -74,6 +74,7 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
       offset: 0,
       hasReachedMax: false,
     );
+    final uxDelay = Future.delayed(const Duration(milliseconds: 800));
     try {
       final service = ref.read(workoutServiceProvider);
 
@@ -83,6 +84,8 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
         offset: 0,
       );
 
+      await uxDelay;
+
       state = state.copyWith(
         sessions: results,
         isLoadingFirst: false,
@@ -90,6 +93,7 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
         offset: results.length,
       );
     } catch (e) {
+      await uxDelay;
       state = state.copyWith(
         isLoadingFirst: false,
         errorMessage: e.toString(),
