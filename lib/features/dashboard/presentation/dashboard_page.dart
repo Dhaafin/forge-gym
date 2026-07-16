@@ -14,6 +14,7 @@ import '../../workout/presentation/log_past_session_page.dart';
 import '../../workout/controllers/live_session_controller.dart';
 import '../../../../core/services/notification_manager.dart';
 import '../../../../core/widgets/forge_search_bar.dart';
+import '../../../../core/widgets/forge_skeleton.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -632,7 +633,7 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
           // Exercise Grid
           Expanded(
             child: state.isLoadingFirst
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? _buildExercisesSkeleton()
                 : state.errorMessage != null
                     ? Center(
                         child: Column(
@@ -768,33 +769,50 @@ class _ExercisesLibraryViewState extends ConsumerState<_ExercisesLibraryView> {
 
   Widget _buildSkeletonCard() {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withValues(alpha: 0.5),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.03),
+        ),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            height: 16,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(4),
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ForgeSkeleton(height: 16, width: 100),
+              SizedBox(height: 6),
+              ForgeSkeleton(height: 16, width: 60),
+            ],
           ),
-          Container(
+          ForgeSkeleton(
             height: 20,
-            width: 80,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            width: 70,
+            borderRadius: BorderRadius.all(Radius.circular(8)),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExercisesSkeleton() {
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        return _buildSkeletonCard();
+      },
     );
   }
 }
@@ -1157,9 +1175,7 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
         // ── Content ──
         Expanded(
           child: historyState.isLoadingFirst
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppTheme.primary),
-                )
+              ? _buildWorkoutsSkeleton()
               : historyState.errorMessage != null && historyState.sessions.isEmpty
                   ? _buildError(historyState.errorMessage!)
                   : historyState.sessions.isEmpty
@@ -2015,6 +2031,70 @@ class _WorkoutHistoryViewState extends ConsumerState<_WorkoutHistoryView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutsSkeleton() {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return _buildWorkoutSkeletonCard();
+      },
+    );
+  }
+
+  Widget _buildWorkoutSkeletonCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primary.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: ForgeSkeleton(
+                height: 24,
+                width: 24,
+                borderRadius: BorderRadius.all(Radius.circular(6)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ForgeSkeleton(height: 16, width: 140),
+                SizedBox(height: 10),
+                Row(
+                  children: [
+                    ForgeSkeleton(height: 14, width: 70),
+                    SizedBox(width: 10),
+                    ForgeSkeleton(height: 14, width: 60),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const ForgeSkeleton(height: 16, width: 16),
+        ],
       ),
     );
   }
