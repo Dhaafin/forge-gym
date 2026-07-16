@@ -72,7 +72,6 @@ class ExerciseController extends Notifier<ExerciseState> {
 
   Future<void> fetchFirstPage() async {
     state = state.copyWith(isLoadingFirst: true, errorMessage: null, offset: 0, hasReachedMax: false);
-    final uxDelay = Future.delayed(const Duration(milliseconds: 800));
     try {
       final workoutService = ref.read(workoutServiceProvider);
 
@@ -92,8 +91,6 @@ class ExerciseController extends Notifier<ExerciseState> {
         offset: 0,
       );
 
-      await uxDelay;
-
       state = state.copyWith(
         exercises: results,
         isLoadingFirst: false,
@@ -101,7 +98,6 @@ class ExerciseController extends Notifier<ExerciseState> {
         offset: results.length,
       );
     } catch (e) {
-      await uxDelay;
       state = state.copyWith(
         isLoadingFirst: false,
         errorMessage: e.toString(),

@@ -19,10 +19,14 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
 
+  bool _localLoading = false;
+  int _activeRequests = 0;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _triggerLocalLoading();
   }
 
   @override
@@ -30,6 +34,28 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _triggerLocalLoading() {
+    _loadData(() {});
+  }
+
+  void _loadData(VoidCallback action) async {
+    setState(() {
+      _localLoading = true;
+      _activeRequests++;
+    });
+
+    final currentRequestId = _activeRequests;
+    action();
+
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (mounted && currentRequestId == _activeRequests) {
+      setState(() {
+        _localLoading = false;
+      });
+    }
   }
 
   void _onScroll() {
@@ -130,6 +156,7 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseControllerProvider);
     final muscles = ['All', 'Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+    final showSkeleton = state.isLoadingFirst || _localLoading;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -142,10 +169,14 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
               controller: _searchController,
               hintText: 'Search exercise...',
               onSubmitted: (val) {
-                ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+                _loadData(() {
+                  ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+                });
               },
               onClear: () {
-                ref.read(exerciseControllerProvider.notifier).setSearch('');
+                _loadData(() {
+                  ref.read(exerciseControllerProvider.notifier).setSearch('');
+                });
               },
             ),
           ),
@@ -167,7 +198,9 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
                     selected: isSelected,
                     onSelected: (selected) {
                       if (selected) {
-                        ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
+                        _loadData(() {
+                          ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
+                        });
                         _searchController.clear();
                       }
                     },
@@ -193,7 +226,7 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
 
           // Exercise Grid
           Expanded(
-            child: state.isLoadingFirst
+            child: showSkeleton
                 ? _buildExercisesSkeleton()
                 : state.errorMessage != null
                     ? Center(
@@ -213,7 +246,9 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
                             const SizedBox(height: 12),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(minimumSize: const Size(120, 40)),
-                              onPressed: () => ref.read(exerciseControllerProvider.notifier).fetchFirstPage(),
+                              onPressed: () => _loadData(() {
+                                ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
+                              }),
                               child: const Text('Try Again'),
                             ),
                           ],

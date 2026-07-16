@@ -18,11 +18,14 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final Set<String> _expandedIds = {};
+  bool _localLoading = false;
+  int _activeRequests = 0;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _triggerLocalLoading();
   }
 
   @override
@@ -30,6 +33,28 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _triggerLocalLoading() {
+    _loadData(() {});
+  }
+
+  void _loadData(VoidCallback action) async {
+    setState(() {
+      _localLoading = true;
+      _activeRequests++;
+    });
+
+    final currentRequestId = _activeRequests;
+    action();
+
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (mounted && currentRequestId == _activeRequests) {
+      setState(() {
+        _localLoading = false;
+      });
+    }
   }
 
   void _onScroll() {
@@ -58,6 +83,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
   @override
   Widget build(BuildContext context) {
     final historyState = ref.watch(workoutHistoryControllerProvider);
+    final showSkeleton = historyState.isLoadingFirst || _localLoading;
 
     return Column(
       children: [
@@ -67,19 +93,24 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
           child: ForgeSearchBar(
             controller: _searchController,
             hintText: 'Search workouts...',
-            onChanged: (v) =>
-                ref.read(workoutHistoryControllerProvider.notifier).setSearch(v),
+            onChanged: (v) {
+              _loadData(() {
+                ref.read(workoutHistoryControllerProvider.notifier).setSearch(v);
+              });
+            },
             onClear: () {
-              ref
-                  .read(workoutHistoryControllerProvider.notifier)
-                  .setSearch('');
+              _loadData(() {
+                ref
+                    .read(workoutHistoryControllerProvider.notifier)
+                    .setSearch('');
+              });
             },
           ),
         ),
 
         // ── Content ──
         Expanded(
-          child: historyState.isLoadingFirst
+          child: showSkeleton
               ? _buildWorkoutsSkeleton()
               : historyState.errorMessage != null && historyState.sessions.isEmpty
                   ? _buildError(historyState.errorMessage!)
@@ -922,8 +953,9 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
             ),
             const SizedBox(height: 24),
             TextButton.icon(
-              onPressed: () =>
-                  ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage(),
+              onPressed: () => _loadData(() {
+                ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
+              }),
               icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
               label: const Text('Retry', style: TextStyle(color: AppTheme.primary)),
             ),
