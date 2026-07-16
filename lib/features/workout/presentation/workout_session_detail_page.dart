@@ -468,9 +468,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Workout Summary'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_rounded),
