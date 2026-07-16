@@ -4,6 +4,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/services/authenticated_http_client.dart';
 import '../models/exercise_model.dart';
 import '../models/workout_session_model.dart';
+import '../models/ai_coach_analysis_model.dart';
 
 final workoutServiceProvider = Provider<WorkoutService>((ref) {
   return WorkoutService(ref.read(authenticatedHttpClientProvider));
@@ -286,6 +287,30 @@ class WorkoutService {
         return;
       } else {
         throw Exception('Failed to delete workout set. Code: ${response.statusCode}');
+      }
+    } on UnauthorizedException {
+      rethrow;
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<AiCoachAnalysisModel> fetchAiCoachAnalysis({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/ai/coach'),
+        extraHeaders: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'session_id': sessionId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return AiCoachAnalysisModel.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to fetch AI coach analysis. Code: ${response.statusCode}');
       }
     } on UnauthorizedException {
       rethrow;

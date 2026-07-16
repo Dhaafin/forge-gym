@@ -5,6 +5,7 @@ import '../../../../core/utils/flash_message.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
 import '../controllers/workout_history_controller.dart';
 import '../models/workout_session_model.dart';
+import '../controllers/ai_coach_controller.dart';
 
 class WorkoutSessionDetailPage extends ConsumerStatefulWidget {
   final String sessionId;
@@ -615,6 +616,8 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             const SizedBox(height: 28),
           ],
 
+          _buildAiCoachSection(),
+
           // Exercises Section Header
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 24),
@@ -941,6 +944,165 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
             );
           }),
           const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiCoachSection() {
+    final aiCoachAsync = ref.watch(aiCoachAnalysisProvider(widget.sessionId));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.smart_toy_rounded, color: AppTheme.primary, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'AI COACH ANALYSIS',
+                style: TextStyle(
+                  color: AppTheme.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          aiCoachAsync.when(
+            data: (analysis) {
+              if (analysis.response.trim().isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primary.withValues(alpha: 0.08),
+                      Colors.white.withValues(alpha: 0.02),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    width: 1.2,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Coach Feedback (${analysis.modelUsed.split('/').last})',
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      analysis.response,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 13.5,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+            loading: () => Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.05),
+                  width: 1,
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ForgeSkeleton(height: 12, width: 12),
+                      SizedBox(width: 8),
+                      ForgeSkeleton(height: 12, width: 140),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  ForgeSkeleton(height: 14, width: double.infinity),
+                  SizedBox(height: 8),
+                  ForgeSkeleton(height: 14, width: double.infinity),
+                  SizedBox(height: 8),
+                  ForgeSkeleton(height: 14, width: 180),
+                ],
+              ),
+            ),
+            error: (err, stack) => Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.error.withValues(alpha: 0.15),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: AppTheme.error, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Failed to get AI Coach feedback',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          err.toString().replaceAll('Exception: ', ''),
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary),
+                    onPressed: () => ref.invalidate(aiCoachAnalysisProvider(widget.sessionId)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
