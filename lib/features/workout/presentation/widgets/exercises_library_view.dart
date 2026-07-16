@@ -9,7 +9,8 @@ import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model.dart';
 
 class ExercisesLibraryView extends ConsumerStatefulWidget {
-  const ExercisesLibraryView({super.key});
+  final bool isActive;
+  const ExercisesLibraryView({super.key, required this.isActive});
 
   @override
   ConsumerState<ExercisesLibraryView> createState() => _ExercisesLibraryViewState();
@@ -27,6 +28,14 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _triggerLocalLoading();
+  }
+
+  @override
+  void didUpdateWidget(ExercisesLibraryView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _triggerLocalLoading();
+    }
   }
 
   @override

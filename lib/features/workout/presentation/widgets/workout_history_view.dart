@@ -8,7 +8,8 @@ import '../../controllers/workout_history_controller.dart';
 import '../../models/workout_session_model.dart';
 
 class WorkoutHistoryView extends ConsumerStatefulWidget {
-  const WorkoutHistoryView({super.key});
+  final bool isActive;
+  const WorkoutHistoryView({super.key, required this.isActive});
 
   @override
   ConsumerState<WorkoutHistoryView> createState() => _WorkoutHistoryViewState();
@@ -26,6 +27,14 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _triggerLocalLoading();
+  }
+
+  @override
+  void didUpdateWidget(WorkoutHistoryView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _triggerLocalLoading();
+    }
   }
 
   @override

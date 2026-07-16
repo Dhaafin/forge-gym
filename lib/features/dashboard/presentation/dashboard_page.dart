@@ -280,12 +280,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _buildWorkoutsTab() {
-    return const WorkoutHistoryView();
+  Widget _buildWorkoutsTab(bool isActive) {
+    return WorkoutHistoryView(isActive: isActive);
   }
 
-  Widget _buildExercisesTab() {
-    return const ExercisesLibraryView();
+  Widget _buildExercisesTab(bool isActive) {
+    return ExercisesLibraryView(isActive: isActive);
   }
 
   Widget _buildProfileTab() {
@@ -328,8 +328,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget build(BuildContext context) {
     final tabs = [
       _buildDashboardTab(),
-      _buildWorkoutsTab(),
-      _buildExercisesTab(),
+      _buildWorkoutsTab(_currentIndex == 1),
+      _buildExercisesTab(_currentIndex == 2),
       _buildProfileTab(),
     ];
 
