@@ -318,4 +318,27 @@ class WorkoutService {
       throw Exception(e.toString());
     }
   }
+
+  Future<Map<String, dynamic>> parseWorkoutNotes(String rawText) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/parse-notes'),
+        extraHeaders: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'raw_text': rawText,
+        }),
+        timeout: const Duration(seconds: 20),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Failed to parse notes. Code: ${response.statusCode}');
+      }
+    } on UnauthorizedException {
+      rethrow;
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 }

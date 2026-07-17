@@ -144,6 +144,135 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     _saveDraftToLocal();
   }
 
+  Future<void> parseAndPopulateNotes(String rawText) async {
+    if (state.draft == null) return;
+
+    state = state.copyWith(isLoading: true, clearError: false);
+    try {
+      final service = ref.read(workoutServiceProvider);
+      final result = await service.parseWorkoutNotes(rawText);
+
+      final title = result['title'] as String? ?? 'Past Workout Session';
+      final dateStr = result['date'] as String?;
+      final parsedDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
+      final startTime = parsedDate ?? DateTime.now().subtract(const Duration(hours: 1));
+
+      final rawExercises = result['exercises'] as List<dynamic>? ?? [];
+      final List<WorkoutSetModel> allSets = [];
+
+      for (final rawExercise in rawExercises) {
+        final exerciseJson = rawExercise as Map<String, dynamic>;
+        final matched = exerciseJson['matched'] as bool? ?? false;
+
+        String exerciseId;
+        String exerciseName;
+
+        if (matched) {
+          exerciseId = exerciseJson['exercise_id'] as String;
+          exerciseName = exerciseJson['exercise_name'] as String;
+        } else {
+          // Unmatched! Auto-create the exercise on the fly
+          final rawName = exerciseJson['raw_name'] as String? ?? 'Unnamed Exercise';
+          final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? 'Other';
+
+          debugPrint('[LiveSession] Auto-creating unmatched exercise: $rawName ($targetMuscle)');
+          final newExercise = await service.createExercise(
+            name: rawName,
+            targetMuscle: targetMuscle,
+          );
+          exerciseId = newExercise.id;
+          exerciseName = newExercise.name;
+        }
+
+        final rawSets = exerciseJson['sets'] as List<dynamic>? ?? [];
+        for (final rawSet in rawSets) {
+          final setJson = rawSet as Map<String, dynamic>;
+          allSets.add(WorkoutSetModel(
+            id: _uuid.v4(),
+            sessionId: state.draft!.id,
+            exerciseId: exerciseId,
+            exerciseName: exerciseName,
+            setNumber: setJson['set_number'] as int? ?? 1,
+            weightKg: (setJson['weight_kg'] as num?)?.toDouble() ?? 0.0,
+            reps: setJson['reps'] as int? ?? 0,
+            setType: setJson['set_type'] as String? ?? 'normal',
+            isPr: false,
+          ));
+        }
+      }
+
+      final endTime = startTime.add(const Duration(hours: 1));
+
+      state = state.copyWith(
+        isLoading: false,
+        draft: state.draft!.copyWith(
+          title: title,
+          startTime: startTime,
+          endTime: endTime,
+          durationMinutes: 60,
+          sets: allSets,
+        ),
+      );
+      _saveDraftToLocal();
+    } catch (e) {
+      debugPrint('[LiveSession] parseAndPopulateNotes failed: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      rethrow;
+    }
+  }
+
+  void populateFromParsedJson(Map<String, dynamic> result) {
+    if (state.draft == null) return;
+
+    final title = result['title'] as String? ?? 'Past Workout Session';
+    final dateStr = result['date'] as String?;
+    final parsedDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
+    final startTime = parsedDate ?? DateTime.now().subtract(const Duration(hours: 1));
+
+    final rawExercises = result['exercises'] as List<dynamic>? ?? [];
+    final List<WorkoutSetModel> allSets = [];
+
+    for (final rawExercise in rawExercises) {
+      final exerciseJson = rawExercise as Map<String, dynamic>;
+      final exerciseId = exerciseJson['exercise_id'] as String?;
+      final exerciseName = exerciseJson['exercise_name'] as String? ?? exerciseJson['raw_name'] as String? ?? 'Unnamed';
+
+      if (exerciseId == null || exerciseId.isEmpty) continue;
+
+      final rawSets = exerciseJson['sets'] as List<dynamic>? ?? [];
+      for (final rawSet in rawSets) {
+        final setJson = rawSet as Map<String, dynamic>;
+        allSets.add(WorkoutSetModel(
+          id: _uuid.v4(),
+          sessionId: state.draft!.id,
+          exerciseId: exerciseId,
+          exerciseName: exerciseName,
+          setNumber: setJson['set_number'] as int? ?? 1,
+          weightKg: (setJson['weight_kg'] as num?)?.toDouble() ?? 0.0,
+          reps: setJson['reps'] as int? ?? 0,
+          setType: setJson['set_type'] as String? ?? 'normal',
+          isPr: false,
+        ));
+      }
+    }
+
+    final endTime = startTime.add(const Duration(hours: 1));
+
+    state = state.copyWith(
+      draft: state.draft!.copyWith(
+        title: title,
+        startTime: startTime,
+        endTime: endTime,
+        durationMinutes: 60,
+        sets: allSets,
+      ),
+    );
+    _saveDraftToLocal();
+  }
+
   void addSet({
     required ExerciseModel exercise,
     required double weightKg,

@@ -7,6 +7,7 @@ import '../../../core/utils/flash_message.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
+import '../services/workout_service.dart';
 import 'widgets/add_exercise_sheet.dart';
 import 'widgets/add_set_sheet.dart';
 
@@ -121,6 +122,94 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // AI Note Parser Trigger Card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        final success = await showModalBottomSheet<bool>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => const _ParseNotesSheet(),
+                        );
+                        if (success == true && context.mounted) {
+                          context.showSuccessFlash('Workout notes parsed and filled!');
+                          final draft = ref.read(liveSessionControllerProvider).draft;
+                          if (draft != null) {
+                            _titleController.text = draft.title;
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primary.withValues(alpha: 0.15),
+                              AppTheme.primary.withValues(alpha: 0.05),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: AppTheme.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '✨ Auto-fill dengan Catatan AI',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Tempel tulisan workout Anda untuk di-parse instan.',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: AppTheme.primary,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 const Text('SESSION DETAILS', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                 const SizedBox(height: 12),
                 
@@ -369,6 +458,369 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
             const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+enum _NotesSheetStage { input, confirm }
+
+class _ParseNotesSheet extends ConsumerStatefulWidget {
+  const _ParseNotesSheet();
+
+  @override
+  ConsumerState<_ParseNotesSheet> createState() => _ParseNotesSheetState();
+}
+
+class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
+  final _notesController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+  
+  _NotesSheetStage _stage = _NotesSheetStage.input;
+  Map<String, dynamic>? _parsedResult;
+  List<Map<String, dynamic>> _unmatchedExercises = [];
+  final Set<String> _selectedUnmatchedNames = {};
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _submit() async {
+    final text = _notesController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final service = ref.read(workoutServiceProvider);
+      final result = await service.parseWorkoutNotes(text);
+
+      final rawExercises = result['exercises'] as List<dynamic>? ?? [];
+      final List<Map<String, dynamic>> unmatched = [];
+
+      for (final rawExercise in rawExercises) {
+        final exerciseJson = rawExercise as Map<String, dynamic>;
+        final matched = exerciseJson['matched'] as bool? ?? false;
+        if (!matched) {
+          unmatched.add(exerciseJson);
+        }
+      }
+
+      if (unmatched.isEmpty) {
+        ref.read(liveSessionControllerProvider.notifier).populateFromParsedJson(result);
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+          _parsedResult = result;
+          _unmatchedExercises = unmatched;
+          _selectedUnmatchedNames.clear();
+          for (final exercise in unmatched) {
+            final rawName = exercise['raw_name'] as String? ?? 'Unnamed';
+            _selectedUnmatchedNames.add(rawName);
+          }
+          _stage = _NotesSheetStage.confirm;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  void _confirmAndPopulate() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final service = ref.read(workoutServiceProvider);
+      final updatedExercises = <Map<String, dynamic>>[];
+
+      final rawExercises = _parsedResult!['exercises'] as List<dynamic>? ?? [];
+
+      for (final rawExercise in rawExercises) {
+        final exerciseJson = Map<String, dynamic>.from(rawExercise as Map<String, dynamic>);
+        final matched = exerciseJson['matched'] as bool? ?? false;
+
+        if (matched) {
+          updatedExercises.add(exerciseJson);
+        } else {
+          final rawName = exerciseJson['raw_name'] as String? ?? 'Unnamed';
+          if (_selectedUnmatchedNames.contains(rawName)) {
+            final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? 'Other';
+            debugPrint('[LiveSession] Confirmed creation of: $rawName ($targetMuscle)');
+
+            final newExercise = await service.createExercise(
+              name: rawName,
+              targetMuscle: targetMuscle,
+            );
+
+            exerciseJson['exercise_id'] = newExercise.id;
+            exerciseJson['exercise_name'] = newExercise.name;
+            exerciseJson['matched'] = true;
+
+            updatedExercises.add(exerciseJson);
+          } else {
+            debugPrint('[LiveSession] User skipped creation of: $rawName. Skipping exercise.');
+          }
+        }
+      }
+
+      final finalResult = Map<String, dynamic>.from(_parsedResult!);
+      finalResult['exercises'] = updatedExercises;
+
+      ref.read(liveSessionControllerProvider.notifier).populateFromParsedJson(finalResult);
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  Widget _buildInputStage() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              'Auto-fill dengan Catatan AI',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Tempel catatan latihan Anda di bawah. AI akan memilah nama latihan, set, reps, beban, dan tanggal latihan secara otomatis.',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+        ),
+        const SizedBox(height: 16),
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: AppTheme.error, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        TextField(
+          controller: _notesController,
+          maxLines: 6,
+          minLines: 3,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Contoh:\n## 06-04-26 (Pull Day)\n- Lat Pulldowns 3 x 12 (30kg)\n- Bicep Curl 3 x 10 (10kg)',
+            hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+            filled: true,
+            fillColor: AppTheme.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                )
+              : const Text(
+                  'PARSE CATATAN AI',
+                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildConfirmationStage() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.help_outline_rounded, color: AppTheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              'Latihan Baru Terdeteksi',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Latihan-latihan berikut tidak ditemukan di database Anda. Centang latihan yang ingin Anda buat secara otomatis:',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+        ),
+        const SizedBox(height: 16),
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: AppTheme.error, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _unmatchedExercises.length,
+            itemBuilder: (context, index) {
+              final exercise = _unmatchedExercises[index];
+              final rawName = exercise['raw_name'] as String? ?? 'Unnamed';
+              final muscle = exercise['inferred_target_muscle'] as String? ?? 'Other';
+              final isChecked = _selectedUnmatchedNames.contains(rawName);
+
+              return CheckboxListTile(
+                value: isChecked,
+                activeColor: AppTheme.primary,
+                checkColor: Colors.black,
+                title: Text(
+                  rawName,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                subtitle: Text(
+                  'Otot target: $muscle',
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
+                onChanged: _isLoading
+                    ? null
+                    : (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedUnmatchedNames.add(rawName);
+                          } else {
+                            _selectedUnmatchedNames.remove(rawName);
+                          }
+                        });
+                      },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        setState(() {
+                          _stage = _NotesSheetStage.input;
+                          _error = null;
+                        });
+                      },
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textSecondary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Batal'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _confirmAndPopulate,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'BUAT & MASUKKAN',
+                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                      ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: _stage == _NotesSheetStage.input ? _buildInputStage() : _buildConfirmationStage(),
       ),
     );
   }
