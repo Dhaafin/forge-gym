@@ -13,6 +13,7 @@ import '../../workout/controllers/live_session_controller.dart';
 import '../../../../core/services/notification_manager.dart';
 import '../../workout/presentation/widgets/exercises_library_view.dart';
 import '../../workout/presentation/widgets/workout_history_view.dart';
+import '../../workout/presentation/widgets/analytics_view.dart';
 import '../../workout/presentation/workout_session_detail_page.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -25,7 +26,7 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   int _currentIndex = 0;
 
-  final List<String> _titles = ['Dashboard', 'Workouts', 'Exercises', 'Profile'];
+  final List<String> _titles = ['Dashboard', 'Workouts', 'Analytics', 'Exercises', 'Profile'];
 
   Future<void> _navigateToLiveSession() async {
     try {
@@ -471,7 +472,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final tabs = [
       _buildDashboardTab(),
       _buildWorkoutsTab(_currentIndex == 1),
-      _buildExercisesTab(_currentIndex == 2),
+      AnalyticsView(isActive: _currentIndex == 2),
+      _buildExercisesTab(_currentIndex == 3),
       _buildProfileTab(),
     ];
 
@@ -556,6 +558,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.history_rounded),
             label: 'Workouts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_rounded),
+            label: 'Analytics',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center_rounded),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -485,9 +486,14 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
   final Set<String> _selectedUnmatchedNames = {};
   final Map<String, ExerciseModel> _mappedExercises = {};
 
+  double _loadingProgress = 0.0;
+  String _loadingMessage = 'Menginisialisasi...';
+  Timer? _loadingTimer;
+
   @override
   void dispose() {
     _notesController.dispose();
+    _loadingTimer?.cancel();
     super.dispose();
   }
 
@@ -498,11 +504,48 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _loadingProgress = 0.0;
+      _loadingMessage = 'Menghubungi AI...';
+    });
+
+    final steps = [
+      _LoadingStep(0.0, 0.25, 'Membaca catatan latihan...'),
+      _LoadingStep(0.25, 0.55, 'Mengidentifikasi nama latihan...'),
+      _LoadingStep(0.55, 0.80, 'Menganalisis set, reps & beban...'),
+      _LoadingStep(0.80, 0.95, 'Mencocokkan dengan database...'),
+    ];
+
+    _loadingTimer?.cancel();
+    _loadingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_loadingProgress < 0.95) {
+          _loadingProgress += 0.02;
+          if (_loadingProgress > 0.95) _loadingProgress = 0.95;
+
+          for (int i = 0; i < steps.length; i++) {
+            if (_loadingProgress >= steps[i].start && _loadingProgress <= steps[i].end) {
+              _loadingMessage = steps[i].message;
+              break;
+            }
+          }
+        }
+      });
     });
 
     try {
       final service = ref.read(workoutServiceProvider);
       final result = await service.parseWorkoutNotes(text);
+
+      _loadingTimer?.cancel();
+      setState(() {
+        _loadingProgress = 1.0;
+        _loadingMessage = 'Parsing selesai!';
+      });
+      await Future.delayed(const Duration(milliseconds: 250));
 
       final rawExercises = result['exercises'] as List<dynamic>? ?? [];
       final List<Map<String, dynamic>> unmatched = [];
@@ -535,6 +578,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         });
       }
     } catch (e) {
+      _loadingTimer?.cancel();
       setState(() {
         _isLoading = false;
         _error = e.toString().replaceAll('Exception: ', '');
@@ -546,6 +590,35 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _loadingProgress = 0.0;
+      _loadingMessage = 'Menghubungkan latihan...';
+    });
+
+    final steps = [
+      _LoadingStep(0.0, 0.40, 'Menghubungkan ke database...'),
+      _LoadingStep(0.40, 0.80, 'Membuat latihan baru jika diperlukan...'),
+      _LoadingStep(0.80, 0.95, 'Menyinkronkan hasil catatan...'),
+    ];
+
+    _loadingTimer?.cancel();
+    _loadingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_loadingProgress < 0.95) {
+          _loadingProgress += 0.03;
+          if (_loadingProgress > 0.95) _loadingProgress = 0.95;
+
+          for (int i = 0; i < steps.length; i++) {
+            if (_loadingProgress >= steps[i].start && _loadingProgress <= steps[i].end) {
+              _loadingMessage = steps[i].message;
+              break;
+            }
+          }
+        }
+      });
     });
 
     try {
@@ -593,17 +666,80 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
       final finalResult = Map<String, dynamic>.from(_parsedResult!);
       finalResult['exercises'] = updatedExercises;
 
+      _loadingTimer?.cancel();
+      setState(() {
+        _loadingProgress = 1.0;
+        _loadingMessage = 'Sinkronisasi berhasil!';
+      });
+      await Future.delayed(const Duration(milliseconds: 250));
+
       ref.read(liveSessionControllerProvider.notifier).populateFromParsedJson(finalResult);
 
       if (mounted) {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      _loadingTimer?.cancel();
       setState(() {
         _isLoading = false;
         _error = e.toString().replaceAll('Exception: ', '');
       });
     }
+  }
+
+  Widget _buildLoadingState() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 24),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppTheme.primary,
+              size: 40,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          _loadingMessage,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: _loadingProgress,
+            minHeight: 8,
+            backgroundColor: AppTheme.surface,
+            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${(_loadingProgress * 100).toInt()}%',
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: AppTheme.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
   }
 
   Widget _buildInputStage() {
@@ -663,7 +799,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         ),
         const SizedBox(height: 24),
         ElevatedButton(
-          onPressed: _isLoading ? null : _submit,
+          onPressed: _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primary,
             foregroundColor: Colors.black,
@@ -672,16 +808,10 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                )
-              : const Text(
-                  'PARSE CATATAN AI',
-                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                ),
+          child: const Text(
+            'PARSE CATATAN AI',
+            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+          ),
         ),
         const SizedBox(height: 12),
       ],
@@ -759,14 +889,12 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                     style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   trailing: TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            setState(() {
-                              _mappedExercises.remove(rawName);
-                              _selectedUnmatchedNames.add(rawName);
-                            });
-                          },
+                    onPressed: () {
+                      setState(() {
+                        _mappedExercises.remove(rawName);
+                        _selectedUnmatchedNames.add(rawName);
+                      });
+                    },
                     child: const Text('Ganti', style: TextStyle(color: AppTheme.primary)),
                   ),
                 );
@@ -779,17 +907,15 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                         value: isChecked,
                         activeColor: AppTheme.primary,
                         checkColor: Colors.black,
-                        onChanged: _isLoading
-                            ? null
-                            : (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    _selectedUnmatchedNames.add(rawName);
-                                  } else {
-                                    _selectedUnmatchedNames.remove(rawName);
-                                  }
-                                });
-                              },
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selectedUnmatchedNames.add(rawName);
+                            } else {
+                              _selectedUnmatchedNames.remove(rawName);
+                            }
+                          });
+                        },
                       ),
                       Expanded(
                         child: Column(
@@ -809,24 +935,22 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                     ],
                   ),
                   trailing: TextButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            ref.read(exerciseControllerProvider.notifier).setSearch('');
-                            
-                            final selected = await showModalBottomSheet<ExerciseModel>(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => const _LinkExerciseSheet(),
-                            );
-                            if (selected != null) {
-                              setState(() {
-                                _mappedExercises[rawName] = selected;
-                                _selectedUnmatchedNames.remove(rawName);
-                              });
-                            }
-                          },
+                    onPressed: () async {
+                      ref.read(exerciseControllerProvider.notifier).setSearch('');
+                      
+                      final selected = await showModalBottomSheet<ExerciseModel>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const _LinkExerciseSheet(),
+                      );
+                      if (selected != null) {
+                        setState(() {
+                          _mappedExercises[rawName] = selected;
+                          _selectedUnmatchedNames.remove(rawName);
+                        });
+                      }
+                    },
                     icon: const Icon(Icons.link_rounded, size: 14, color: AppTheme.primary),
                     label: const Text('Link', style: TextStyle(color: AppTheme.primary)),
                   ),
@@ -840,14 +964,12 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           children: [
             Expanded(
               child: TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        setState(() {
-                          _stage = _NotesSheetStage.input;
-                          _error = null;
-                        });
-                      },
+                onPressed: () {
+                  setState(() {
+                    _stage = _NotesSheetStage.input;
+                    _error = null;
+                  });
+                },
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.textSecondary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -858,7 +980,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _confirmAndPopulate,
+                onPressed: _confirmAndPopulate,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.black,
@@ -867,16 +989,10 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                      )
-                    : const Text(
-                        'BUAT & MASUKKAN',
-                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                      ),
+                child: const Text(
+                  'BUAT & MASUKKAN',
+                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                ),
               ),
             ),
           ],
@@ -898,10 +1014,20 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
-        child: _stage == _NotesSheetStage.input ? _buildInputStage() : _buildConfirmationStage(),
+        child: _isLoading 
+            ? _buildLoadingState() 
+            : (_stage == _NotesSheetStage.input ? _buildInputStage() : _buildConfirmationStage()),
       ),
     );
   }
+}
+
+class _LoadingStep {
+  final double start;
+  final double end;
+  final String message;
+
+  _LoadingStep(this.start, this.end, this.message);
 }
 
 class _LinkExerciseSheet extends ConsumerStatefulWidget {
