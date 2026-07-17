@@ -327,7 +327,7 @@ class WorkoutService {
         body: jsonEncode({
           'raw_text': rawText,
         }),
-        timeout: const Duration(seconds: 20),
+        timeout: const Duration(seconds: 60),
       );
 
       if (response.statusCode == 200) {
