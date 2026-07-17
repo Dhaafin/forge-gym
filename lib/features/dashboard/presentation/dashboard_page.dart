@@ -493,16 +493,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           if (hasActiveSession) _buildActiveWorkoutBar(liveSessionState),
         ],
       ),
-      floatingActionButton: _currentIndex == 1
+      floatingActionButton: (_currentIndex == 1 && !hasActiveSession)
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.black,
               onPressed: () async {
-                if (hasActiveSession) {
-                  _navigateToLiveSession();
-                  return;
-                }
-
                 final mode = await showModalBottomSheet<String>(
                   context: context,
                   isScrollControlled: true,
