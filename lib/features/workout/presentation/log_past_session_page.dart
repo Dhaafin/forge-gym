@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/flash_message.dart';
+import '../../../../core/widgets/forge_search_bar.dart';
 import '../controllers/live_session_controller.dart';
+import '../controllers/exercise_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
 import '../services/workout_service.dart';
@@ -481,6 +483,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
   Map<String, dynamic>? _parsedResult;
   List<Map<String, dynamic>> _unmatchedExercises = [];
   final Set<String> _selectedUnmatchedNames = {};
+  final Map<String, ExerciseModel> _mappedExercises = {};
 
   @override
   void dispose() {
@@ -523,6 +526,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           _parsedResult = result;
           _unmatchedExercises = unmatched;
           _selectedUnmatchedNames.clear();
+          _mappedExercises.clear();
           for (final exercise in unmatched) {
             final rawName = exercise['raw_name'] as String? ?? 'Unnamed';
             _selectedUnmatchedNames.add(rawName);
@@ -558,7 +562,15 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           updatedExercises.add(exerciseJson);
         } else {
           final rawName = exerciseJson['raw_name'] as String? ?? 'Unnamed';
-          if (_selectedUnmatchedNames.contains(rawName)) {
+          
+          if (_mappedExercises.containsKey(rawName)) {
+            final mapped = _mappedExercises[rawName]!;
+            exerciseJson['exercise_id'] = mapped.id;
+            exerciseJson['exercise_name'] = mapped.name;
+            exerciseJson['matched'] = true;
+            
+            updatedExercises.add(exerciseJson);
+          } else if (_selectedUnmatchedNames.contains(rawName)) {
             final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? 'Other';
             debugPrint('[LiveSession] Confirmed creation of: $rawName ($targetMuscle)');
 
@@ -573,7 +585,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
 
             updatedExercises.add(exerciseJson);
           } else {
-            debugPrint('[LiveSession] User skipped creation of: $rawName. Skipping exercise.');
+            debugPrint('[LiveSession] User skipped creation and mapping of: $rawName. Skipping.');
           }
         }
       }
@@ -696,7 +708,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Latihan-latihan berikut tidak ditemukan di database Anda. Centang latihan yang ingin Anda buat secara otomatis:',
+          'Latihan-latihan berikut tidak ditemukan di database Anda. Silakan hubungkan ke database atau pilih buat secara otomatis:',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
         ),
         const SizedBox(height: 16),
@@ -716,7 +728,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           const SizedBox(height: 16),
         ],
         Container(
-          constraints: const BoxConstraints(maxHeight: 200),
+          constraints: const BoxConstraints(maxHeight: 220),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(12),
@@ -728,32 +740,98 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
               final exercise = _unmatchedExercises[index];
               final rawName = exercise['raw_name'] as String? ?? 'Unnamed';
               final muscle = exercise['inferred_target_muscle'] as String? ?? 'Other';
-              final isChecked = _selectedUnmatchedNames.contains(rawName);
+              
+              final isMapped = _mappedExercises.containsKey(rawName);
 
-              return CheckboxListTile(
-                value: isChecked,
-                activeColor: AppTheme.primary,
-                checkColor: Colors.black,
-                title: Text(
-                  rawName,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                subtitle: Text(
-                  'Otot target: $muscle',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                ),
-                onChanged: _isLoading
-                    ? null
-                    : (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedUnmatchedNames.add(rawName);
-                          } else {
-                            _selectedUnmatchedNames.remove(rawName);
-                          }
-                        });
-                      },
-              );
+              if (isMapped) {
+                final mappedExercise = _mappedExercises[rawName]!;
+                return ListTile(
+                  title: Text(
+                    rawName,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      decoration: TextDecoration.lineThrough,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '🔗 Linked to: ${mappedExercise.name}',
+                    style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  trailing: TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            setState(() {
+                              _mappedExercises.remove(rawName);
+                              _selectedUnmatchedNames.add(rawName);
+                            });
+                          },
+                    child: const Text('Ganti', style: TextStyle(color: AppTheme.primary)),
+                  ),
+                );
+              } else {
+                final isChecked = _selectedUnmatchedNames.contains(rawName);
+                return ListTile(
+                  title: Row(
+                    children: [
+                      Checkbox(
+                        value: isChecked,
+                        activeColor: AppTheme.primary,
+                        checkColor: Colors.black,
+                        onChanged: _isLoading
+                            ? null
+                            : (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedUnmatchedNames.add(rawName);
+                                  } else {
+                                    _selectedUnmatchedNames.remove(rawName);
+                                  }
+                                });
+                              },
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              rawName,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            Text(
+                              'Buat baru (Otot: $muscle)',
+                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: TextButton.icon(
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            ref.read(exerciseControllerProvider.notifier).setSearch('');
+                            
+                            final selected = await showModalBottomSheet<ExerciseModel>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const _LinkExerciseSheet(),
+                            );
+                            if (selected != null) {
+                              setState(() {
+                                _mappedExercises[rawName] = selected;
+                                _selectedUnmatchedNames.remove(rawName);
+                              });
+                            }
+                          },
+                    icon: const Icon(Icons.link_rounded, size: 14, color: AppTheme.primary),
+                    label: const Text('Link', style: TextStyle(color: AppTheme.primary)),
+                  ),
+                );
+              }
             },
           ),
         ),
@@ -822,6 +900,82 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         padding: const EdgeInsets.all(24),
         child: _stage == _NotesSheetStage.input ? _buildInputStage() : _buildConfirmationStage(),
       ),
+    );
+  }
+}
+
+class _LinkExerciseSheet extends ConsumerStatefulWidget {
+  const _LinkExerciseSheet();
+
+  @override
+  ConsumerState<_LinkExerciseSheet> createState() => _LinkExerciseSheetState();
+}
+
+class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(exerciseControllerProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      builder: (_, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              const Text('Pilih Latihan Terdaftar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ForgeSearchBar(
+                  controller: _searchController,
+                  hintText: 'Cari latihan...',
+                  onSubmitted: (val) {
+                    ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+                  },
+                  onClear: () {
+                    ref.read(exerciseControllerProvider.notifier).setSearch('');
+                  },
+                ),
+              ),
+              Expanded(
+                child: state.isLoadingFirst
+                    ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                    : ListView.builder(
+                        controller: controller,
+                        itemCount: state.exercises.length,
+                        itemBuilder: (context, index) {
+                          final exercise = state.exercises[index];
+                          return ListTile(
+                            title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
+                            onTap: () {
+                              Navigator.pop(context, exercise);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
