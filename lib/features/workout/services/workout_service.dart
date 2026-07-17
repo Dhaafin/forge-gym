@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
@@ -332,12 +333,19 @@ class WorkoutService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 504) {
+        throw Exception('Server sedang sibuk (504). Silakan coba lagi.');
       } else {
-        throw Exception('Failed to parse notes. Code: ${response.statusCode}');
+        throw Exception('Gagal memproses catatan (Code: ${response.statusCode}). Silakan coba lagi.');
       }
     } on UnauthorizedException {
       rethrow;
+    } on TimeoutException {
+      throw Exception('Koneksi timeout. Silakan coba lagi.');
     } catch (e) {
+      if (e.toString().contains('TimeoutException')) {
+        throw Exception('Koneksi timeout. Silakan coba lagi.');
+      }
       throw Exception(e.toString());
     }
   }
