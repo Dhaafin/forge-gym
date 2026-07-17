@@ -931,8 +931,10 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
     super.dispose();
   }
 
-  void _showCreateExerciseDialog(String name) async {
+  void _showCreateExerciseDialog([String initialName = '']) async {
+    final nameController = TextEditingController(text: initialName);
     String selectedMuscle = 'Chest';
+    final formKey = GlobalKey<FormState>();
     final muscles = [
       'Chest',
       'Back',
@@ -961,47 +963,71 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
                 'Buat Latihan Baru',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Nama: $name',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Pilih Otot Target:',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedMuscle,
-                    dropdownColor: AppTheme.surface,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppTheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Nama Latihan:',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                     ),
-                    items: muscles.map((m) {
-                      return DropdownMenuItem<String>(
-                        value: m,
-                        child: Text(m),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() {
-                          selectedMuscle = val;
-                        });
-                      }
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: nameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Misal: Bench Press',
+                        hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Nama latihan wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Pilih Otot Target:',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedMuscle,
+                      dropdownColor: AppTheme.surface,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: muscles.map((m) {
+                        return DropdownMenuItem<String>(
+                          value: m,
+                          child: Text(m),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() {
+                            selectedMuscle = val;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -1010,6 +1036,8 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+
                     showDialog(
                       context: context,
                       barrierDismissible: false,
@@ -1020,7 +1048,7 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
 
                     try {
                       final newExercise = await ref.read(workoutServiceProvider).createExercise(
-                        name: name,
+                        name: nameController.text.trim(),
                         targetMuscle: selectedMuscle,
                       );
                       
@@ -1063,7 +1091,6 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseControllerProvider);
-    final query = _searchController.text.trim();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
@@ -1082,7 +1109,7 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
               const SizedBox(height: 16),
               const Text('Pilih Latihan Terdaftar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
                 child: ForgeSearchBar(
                   controller: _searchController,
                   hintText: 'Cari latihan...',
@@ -1094,45 +1121,40 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
                   },
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () => _showCreateExerciseDialog(_searchController.text.trim()),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Buat Latihan Baru'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+                    foregroundColor: AppTheme.primary,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: AppTheme.primary, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
                 child: state.isLoadingFirst
                     ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
                     : ListView.builder(
                         controller: controller,
-                        itemCount: query.isNotEmpty ? state.exercises.length + 1 : state.exercises.length,
+                        itemCount: state.exercises.length,
                         itemBuilder: (context, index) {
-                          if (query.isNotEmpty) {
-                            if (index == 0) {
-                              return ListTile(
-                                leading: const Icon(Icons.add_rounded, color: AppTheme.primary),
-                                title: Text(
-                                  'Buat latihan baru: "$query"',
-                                  style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: const Text('Tentukan otot target dan simpan', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                                onTap: () => _showCreateExerciseDialog(query),
-                              );
-                            }
-                            final exercise = state.exercises[index - 1];
-                            return ListTile(
-                              title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
-                              subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
-                              onTap: () {
-                                Navigator.pop(context, exercise);
-                              },
-                            );
-                          } else {
-                            final exercise = state.exercises[index];
-                            return ListTile(
-                              title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
-                              subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
-                              onTap: () {
-                                Navigator.pop(context, exercise);
-                              },
-                            );
-                          }
+                          final exercise = state.exercises[index];
+                          return ListTile(
+                            title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
+                            onTap: () {
+                              Navigator.pop(context, exercise);
+                            },
+                          );
                         },
                       ),
               ),
