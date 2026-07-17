@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -25,6 +26,146 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   int _currentIndex = 0;
 
   final List<String> _titles = ['Dashboard', 'Workouts', 'Exercises', 'Profile'];
+
+  Future<void> _navigateToLiveSession() async {
+    try {
+      await NotificationManager.init();
+    } catch (e) {
+      debugPrint("Notification Manager init failed: $e");
+    }
+
+    final state = ref.read(liveSessionControllerProvider);
+    if (state.draft != null) {
+      try {
+        await NotificationManager.showWorkoutNotification(
+          title: state.draft!.title,
+          startTime: state.draft!.startTime,
+        );
+      } catch (e) {
+        debugPrint("Local Notification start failed: $e");
+      }
+    }
+
+    if (!mounted) return;
+    final saved = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LiveSessionPage()),
+    );
+
+    if (!mounted) return;
+    if (saved is WorkoutSessionModel) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkoutSessionDetailPage(sessionId: saved.id),
+        ),
+      );
+      if (!mounted) return;
+      context.showSuccessFlash('Workout saved successfully!');
+    } else if (saved == false) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) context.showSuccessFlash('Workout session discarded.');
+    }
+  }
+
+  Widget _buildActiveWorkoutBar(LiveSessionState liveSessionState) {
+    final draft = liveSessionState.draft!;
+    final minutes = liveSessionState.elapsedTime.inMinutes.toString().padLeft(2, '0');
+    final seconds = (liveSessionState.elapsedTime.inSeconds % 60).toString().padLeft(2, '0');
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _navigateToLiveSession,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primary.withValues(alpha: 0.15),
+                      AppTheme.primary.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const _GlowingIndicator(),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            draft.title,
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Workout in progress...',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.timer_rounded,
+                          color: AppTheme.primary,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$minutes:$seconds',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDashboardTab() {
     final historyState = ref.watch(workoutHistoryControllerProvider);
@@ -334,19 +475,34 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       _buildProfileTab(),
     ];
 
+    final liveSessionState = ref.watch(liveSessionControllerProvider);
+    final hasActiveSession = liveSessionState.draft != null && liveSessionState.draft!.isLive;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: tabs,
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: tabs,
+            ),
+          ),
+          if (hasActiveSession) _buildActiveWorkoutBar(liveSessionState),
+        ],
       ),
       floatingActionButton: _currentIndex == 1
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.black,
               onPressed: () async {
+                if (hasActiveSession) {
+                  _navigateToLiveSession();
+                  return;
+                }
+
                 final mode = await showModalBottomSheet<String>(
                   context: context,
                   isScrollControlled: true,
@@ -354,57 +510,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   builder: (context) => const SessionModePickerSheet(),
                 );
 
-                if (!mounted || mode == null) return;
+                if (!context.mounted || mode == null) return;
 
                 if (mode == 'live') {
-                  try {
-                    await NotificationManager.init();
-                  } catch (e) {
-                    debugPrint("Notification Manager init failed: $e");
-                  }
-
                   ref.read(liveSessionControllerProvider.notifier).startLiveSession();
-                  final state = ref.read(liveSessionControllerProvider);
-                  if (state.draft != null) {
-                    try {
-                      await NotificationManager.showWorkoutNotification(
-                        title: state.draft!.title,
-                        startTime: state.draft!.startTime,
-                      );
-                    } catch (e) {
-                      debugPrint("Local Notification start failed: $e");
-                    }
-                  }
-
-                  if (!mounted) return;
-                  final saved = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LiveSessionPage()),
-                  );
-
-                  if (!mounted) return;
-                  if (saved is WorkoutSessionModel) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => WorkoutSessionDetailPage(sessionId: saved.id),
-                      ),
-                    );
-                    context.showSuccessFlash('Workout saved successfully!');
-                  } else if (saved == false) {
-                    await Future.delayed(const Duration(seconds: 2));
-                    if (mounted) context.showSuccessFlash('Workout session discarded.');
-                  }
+                  _navigateToLiveSession();
                 } else if (mode == 'past') {
                   ref.read(liveSessionControllerProvider.notifier).startPastSession();
 
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   final saved = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const LogPastSessionPage()),
                   );
 
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   if (saved is WorkoutSessionModel) {
                     Navigator.push(
                       context,
@@ -412,10 +532,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         builder: (context) => WorkoutSessionDetailPage(sessionId: saved.id),
                       ),
                     );
+                    if (!context.mounted) return;
                     context.showSuccessFlash('Past session logged successfully!');
                   } else if (saved == false) {
                     await Future.delayed(const Duration(seconds: 2));
-                    if (mounted) context.showSuccessFlash('Workout session discarded.');
+                    if (context.mounted) context.showSuccessFlash('Workout session discarded.');
                   }
                 }
               },
@@ -451,6 +572,59 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GlowingIndicator extends StatefulWidget {
+  const _GlowingIndicator();
+
+  @override
+  State<_GlowingIndicator> createState() => _GlowingIndicatorState();
+}
+
+class _GlowingIndicatorState extends State<_GlowingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 3.0, end: 8.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.6),
+                blurRadius: _animation.value,
+                spreadRadius: _animation.value / 2,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

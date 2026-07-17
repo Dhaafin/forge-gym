@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/notification_manager.dart';
 import '../../../core/utils/flash_message.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
