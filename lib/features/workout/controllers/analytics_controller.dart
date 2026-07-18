@@ -98,8 +98,22 @@ class AnalyticsController extends Notifier<AnalyticsState> {
     try {
       final service = ref.read(workoutServiceProvider);
       
-      // 1. Fetch exercises to map exerciseId to targetMuscle
-      final exercises = await service.fetchExercises(limit: 500);
+      // 1. Fetch exercises to map exerciseId to targetMuscle using pagination loop to bypass backend max limit constraints
+      final List<ExerciseModel> exercises = [];
+      int offset = 0;
+      const int fetchLimit = 50;
+      bool hasMore = true;
+
+      while (hasMore) {
+        final chunk = await service.fetchExercises(limit: fetchLimit, offset: offset);
+        exercises.addAll(chunk);
+        if (chunk.length < fetchLimit) {
+          hasMore = false;
+        } else {
+          offset += fetchLimit;
+        }
+      }
+
       _exerciseMap = {for (var e in exercises) e.id: e};
 
       // 2. Fetch workout history with a larger limit to have rich analytics data
