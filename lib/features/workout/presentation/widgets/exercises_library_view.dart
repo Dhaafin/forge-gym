@@ -82,7 +82,7 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        return _ExerciseFormSheet(
+        return ExerciseFormSheet(
           exercise: exercise,
           ref: ref,
           parentContext: parentContext,
@@ -542,22 +542,22 @@ class _TargetMuscleSelectorState extends State<_TargetMuscleSelector> {
   }
 }
 
-class _ExerciseFormSheet extends StatefulWidget {
+class ExerciseFormSheet extends StatefulWidget {
   final ExerciseModel? exercise;
   final WidgetRef ref;
   final BuildContext parentContext;
 
-  const _ExerciseFormSheet({
+  const ExerciseFormSheet({
     this.exercise,
     required this.ref,
     required this.parentContext,
   });
 
   @override
-  State<_ExerciseFormSheet> createState() => _ExerciseFormSheetState();
+  State<ExerciseFormSheet> createState() => _ExerciseFormSheetState();
 }
 
-class _ExerciseFormSheetState extends State<_ExerciseFormSheet> {
+class _ExerciseFormSheetState extends State<ExerciseFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late String _selectedMuscle;
@@ -635,13 +635,14 @@ class _ExerciseFormSheetState extends State<_ExerciseFormSheet> {
                             });
                             try {
                               if (widget.exercise == null) {
-                                await widget.ref.read(exerciseControllerProvider.notifier).createExercise(
+                                 final created = await widget.ref.read(exerciseControllerProvider.notifier).createExercise(
                                       _nameController.text.trim(),
                                       _selectedMuscle,
                                     );
                                 if (widget.parentContext.mounted) {
                                   widget.parentContext.showSuccessFlash('Exercise created successfully');
                                 }
+                                if (context.mounted) Navigator.pop(context, created);
                               } else {
                                 await widget.ref.read(exerciseControllerProvider.notifier).updateExercise(
                                       widget.exercise!.id,
@@ -651,8 +652,8 @@ class _ExerciseFormSheetState extends State<_ExerciseFormSheet> {
                                 if (widget.parentContext.mounted) {
                                   widget.parentContext.showSuccessFlash('Exercise updated successfully');
                                 }
+                                if (context.mounted) Navigator.pop(context);
                               }
-                              if (context.mounted) Navigator.pop(context);
                             } catch (e) {
                               setState(() {
                                 _isLoading = false;

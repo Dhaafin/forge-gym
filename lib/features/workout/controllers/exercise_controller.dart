@@ -149,7 +149,7 @@ class ExerciseController extends Notifier<ExerciseState> {
     fetchFirstPage();
   }
 
-  Future<void> createExercise(String name, String targetMuscle) async {
+  Future<ExerciseModel> createExercise(String name, String targetMuscle) async {
     try {
       final workoutService = ref.read(workoutServiceProvider);
       final newExercise = await workoutService.createExercise(
@@ -159,6 +159,7 @@ class ExerciseController extends Notifier<ExerciseState> {
       state = state.copyWith(
         exercises: [newExercise, ...state.exercises],
       );
+      return newExercise;
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
       rethrow;
