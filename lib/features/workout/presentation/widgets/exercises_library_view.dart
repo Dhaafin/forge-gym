@@ -292,6 +292,7 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'exercises_library_fab',
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.black,
         onPressed: () => _showExerciseForm(context),

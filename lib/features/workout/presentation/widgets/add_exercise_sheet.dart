@@ -21,9 +21,11 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
   @override
   void initState() {
     super.initState();
-    // Force refetch every time the sheet is opened (best practice)
+    // Reset search and force a fresh fetch every time the sheet is opened
     Future.microtask(() {
-      ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
+      final notifier = ref.read(exerciseControllerProvider.notifier);
+      notifier.setSearch('');
+      notifier.fetchFirstPage();
     });
   }
 
@@ -44,58 +46,51 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
     );
   }
 
-  Widget _buildSkeletonList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 4,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 80,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
+  Widget _buildSkeletonItem() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 140,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Colors.white10,
-                  shape: BoxShape.circle,
+                const SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        );
-      },
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -105,7 +100,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
       height: 110,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -122,7 +117,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppTheme.primary.withValues(alpha: 0.2),
+                          AppTheme.primary.withOpacity(0.2),
                           Colors.black,
                         ],
                         begin: Alignment.topLeft,
@@ -139,8 +134,8 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.black.withValues(alpha: 0.85),
-                      Colors.black.withValues(alpha: 0.4),
+                      Colors.black.withOpacity(0.85),
+                      Colors.black.withOpacity(0.4),
                     ],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
@@ -149,64 +144,66 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
               ),
             ),
             // Text & Button Content
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Tidak menemukan latihan?',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Can't find the exercise?",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Buat latihan kustom Anda sekarang',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 12,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Create your custom exercise now',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final created = await showModalBottomSheet<ExerciseModel>(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (sheetContext) => ExerciseFormSheet(
-                          ref: ref,
-                          parentContext: context,
-                        ),
-                      );
-                      if (created != null && mounted) {
-                        _onExerciseSelected(created);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        ],
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
-                    child: const Text(
-                      '+ BUAT',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final created = await showModalBottomSheet<ExerciseModel>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (sheetContext) => ExerciseFormSheet(
+                            ref: ref,
+                            parentContext: context,
+                          ),
+                        );
+                        if (created != null && mounted) {
+                          _onExerciseSelected(created);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      child: const Text(
+                        '+ CREATE',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -220,129 +217,163 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
     final state = ref.watch(exerciseControllerProvider);
     final muscles = ['All', 'Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.9,
-      minChildSize: 0.5,
-      maxChildSize: 0.9,
-      builder: (_, controller) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Tambah Latihan',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                child: ForgeSearchBar(
-                  controller: _searchController,
-                  hintText: 'Cari latihan...',
-                  onSubmitted: (val) {
-                    ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
-                  },
-                  onClear: () {
-                    ref.read(exerciseControllerProvider.notifier).setSearch('');
-                  },
-                ),
-              ),
-              // Muscle pills selector
-              SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  itemCount: muscles.length,
-                  itemBuilder: (context, index) {
-                    final muscle = muscles[index];
-                    final isSelected = state.selectedMuscle == muscle;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: ChoiceChip(
-                        label: Text(muscle),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
-                            _searchController.clear();
-                          }
-                        },
-                        selectedColor: AppTheme.primary,
-                        backgroundColor: AppTheme.surface,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.black : AppTheme.textPrimary,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.05),
+          const SizedBox(height: 16),
+          const Text(
+            'Add Exercise',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+            child: ForgeSearchBar(
+              controller: _searchController,
+              hintText: 'Search exercise...',
+              onSubmitted: (val) {
+                ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+              },
+              onClear: () {
+                ref.read(exerciseControllerProvider.notifier).setSearch('');
+              },
+            ),
+          ),
+          // Muscle pills selector
+          SizedBox(
+            height: 48,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              itemCount: muscles.length,
+              itemBuilder: (context, index) {
+                final muscle = muscles[index];
+                final isSelected = state.selectedMuscle == muscle;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: ChoiceChip(
+                    label: Text(muscle),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        ref.read(exerciseControllerProvider.notifier).setMuscleGroup(muscle);
+                        _searchController.clear();
+                      }
+                    },
+                    selectedColor: AppTheme.primary,
+                    backgroundColor: AppTheme.surface,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.black : AppTheme.textPrimary,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected ? AppTheme.primary : Colors.white.withOpacity(0.05),
+                      ),
+                    ),
+                    showCheckmark: false,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: state.errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 48),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(
+                            state.errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppTheme.textSecondary),
                           ),
                         ),
-                        showCheckmark: false,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: state.isLoadingFirst
-                    ? Column(
-                        children: [
-                          _buildCreateExerciseBanner(),
-                          Expanded(child: _buildSkeletonList()),
-                        ],
-                      )
-                    : ListView.builder(
-                        controller: controller,
-                        itemCount: state.exercises.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return _buildCreateExerciseBanner();
-                          }
-                          final exercise = state.exercises[index - 1];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                            title: Text(
-                              exercise.name,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(minimumSize: const Size(120, 40)),
+                          onPressed: () {
+                            ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
+                          },
+                          child: const Text('Try Again'),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: state.isLoadingFirst 
+                        ? 5 // 1 banner + 4 skeleton items
+                        : (state.exercises.isEmpty ? 2 : state.exercises.length + 1), // banner + exercises (or empty text)
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _buildCreateExerciseBanner();
+                      }
+
+                      if (state.isLoadingFirst) {
+                        return _buildSkeletonItem();
+                      }
+
+                      if (state.exercises.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32.0),
+                            child: Text(
+                              'No exercises found.',
+                              style: TextStyle(color: AppTheme.textSecondary),
                             ),
-                            subtitle: Text(
-                              exercise.targetMuscle,
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                            ),
-                            trailing: const Icon(
-                              Icons.add_circle_outline_rounded,
-                              color: AppTheme.primary,
-                            ),
-                            onTap: () => _onExerciseSelected(exercise),
-                          );
-                        },
-                      ),
-              ),
-            ],
+                          ),
+                        );
+                      }
+
+                      final exercise = state.exercises[index - 1];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                        title: Text(
+                          exercise.name,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          exercise.targetMuscle,
+                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                        ),
+                        trailing: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: AppTheme.primary,
+                        ),
+                        onTap: () => _onExerciseSelected(exercise),
+                      );
+                    },
+                  ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

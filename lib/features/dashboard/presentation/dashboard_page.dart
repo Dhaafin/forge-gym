@@ -499,6 +499,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
       floatingActionButton: (_currentIndex == 1 && !hasActiveSession)
           ? FloatingActionButton(
+              heroTag: 'dashboard_fab',
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.black,
               onPressed: () async {
