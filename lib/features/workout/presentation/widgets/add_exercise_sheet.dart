@@ -6,7 +6,7 @@ import '../../../../core/widgets/forge_search_bar.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model.dart';
 import 'add_set_sheet.dart';
-import 'exercises_library_view.dart';
+import 'exercise_form_sheet.dart';
 
 class AddExerciseSheet extends ConsumerStatefulWidget {
   const AddExerciseSheet({super.key});
@@ -94,123 +94,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
     );
   }
 
-  Widget _buildCreateExerciseBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      height: 110,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            // AI Generated Gym Silhouette Background Image
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/gym_silhouette.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // Fallback gradient if asset doesn't load
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primary.withOpacity(0.2),
-                          Colors.black,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            // Gradient Overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withOpacity(0.85),
-                      Colors.black.withOpacity(0.4),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-              ),
-            ),
-            // Text & Button Content
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Can't find the exercise?",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Create your custom exercise now',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final created = await showModalBottomSheet<ExerciseModel>(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (sheetContext) => ExerciseFormSheet(
-                            ref: ref,
-                            parentContext: context,
-                          ),
-                        );
-                        if (created != null && mounted) {
-                          _onExerciseSelected(created);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.black,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      ),
-                      child: const Text(
-                        '+ CREATE',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +183,39 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
               },
             ),
           ),
+          const SizedBox(height: 12),
+          // Sticky Slim Create Exercise Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: OutlinedButton(
+              onPressed: () async {
+                final created = await showExerciseFormSheet(context);
+                if (created != null && mounted) {
+                  _onExerciseSelected(created);
+                }
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: BorderSide(color: AppTheme.primary.withOpacity(0.5)),
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                backgroundColor: AppTheme.primary.withOpacity(0.05),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_rounded, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'CREATE NEW EXERCISE',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           Expanded(
             child: state.errorMessage != null
@@ -329,13 +246,9 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                   )
                 : ListView.builder(
                     itemCount: state.isLoadingFirst 
-                        ? 5 // 1 banner + 4 skeleton items
-                        : (state.exercises.isEmpty ? 2 : state.exercises.length + 1), // banner + exercises (or empty text)
+                        ? 4 // 4 skeleton items
+                        : (state.exercises.isEmpty ? 1 : state.exercises.length), // exercises (or empty text)
                     itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return _buildCreateExerciseBanner();
-                      }
-
                       if (state.isLoadingFirst) {
                         return _buildSkeletonItem();
                       }
@@ -352,7 +265,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                         );
                       }
 
-                      final exercise = state.exercises[index - 1];
+                      final exercise = state.exercises[index];
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                         title: Text(
