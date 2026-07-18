@@ -5,6 +5,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/flash_message.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../workout/controllers/workout_history_controller.dart';
+import '../../workout/controllers/exercise_controller.dart';
+import '../../workout/controllers/analytics_controller.dart';
 import '../../workout/models/workout_session_model.dart';
 import '../../workout/presentation/widgets/session_mode_picker_sheet.dart';
 import '../../workout/presentation/live_session_page.dart';
@@ -543,6 +545,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
+          if (index != _currentIndex) {
+            if (index == 0) {
+              ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
+            } else if (index == 1) {
+              ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
+            } else if (index == 2) {
+              ref.read(analyticsControllerProvider.notifier).loadAnalyticsData();
+            } else if (index == 3) {
+              ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
+            }
+          }
           setState(() {
             _currentIndex = index;
           });
