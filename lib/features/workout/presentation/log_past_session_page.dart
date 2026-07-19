@@ -1058,6 +1058,39 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(exerciseControllerProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      builder: (_, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              const Text('Pilih Latihan Terdaftar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                child: ForgeSearchBar(
+                  controller: _searchController,
+                  hintText: 'Cari latihan...',
+                  onSubmitted: (val) {
+                    ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
+                  },
+                  onClear: () {
+                    ref.read(exerciseControllerProvider.notifier).setSearch('');
+                  },
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ElevatedButton.icon(
