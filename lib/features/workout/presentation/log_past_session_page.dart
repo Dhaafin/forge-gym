@@ -13,6 +13,7 @@ import '../models/exercise_model.dart';
 import '../services/workout_service.dart';
 import 'widgets/add_exercise_sheet.dart';
 import 'widgets/add_set_sheet.dart';
+import 'widgets/exercise_form_sheet.dart';
 
 class LogPastSessionPage extends ConsumerStatefulWidget {
   const LogPastSessionPage({super.key});
@@ -1057,200 +1058,18 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
     super.dispose();
   }
 
-  void _showCreateExerciseDialog([String initialName = '']) async {
-    final nameController = TextEditingController(text: initialName);
-    String selectedMuscle = 'Chest';
-    final formKey = GlobalKey<FormState>();
-    final muscles = [
-      'Chest',
-      'Back',
-      'Lats',
-      'Shoulders',
-      'Biceps',
-      'Triceps',
-      'Quads',
-      'Hamstrings',
-      'Glutes',
-      'Calves',
-      'Core',
-      'Cardio',
-      'Other'
-    ];
-
-    final ExerciseModel? created = await showDialog<ExerciseModel>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text(
-                'Buat Latihan Baru',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Nama Latihan:',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: nameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Misal: Bench Press',
-                        hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
-                        filled: true,
-                        fillColor: AppTheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Nama latihan wajib diisi';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Pilih Otot Target:',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedMuscle,
-                      dropdownColor: AppTheme.surface,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppTheme.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: muscles.map((m) {
-                        return DropdownMenuItem<String>(
-                          value: m,
-                          child: Text(m),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() {
-                            selectedMuscle = val;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
-
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const Center(
-                        child: CircularProgressIndicator(color: AppTheme.primary),
-                      ),
-                    );
-
-                    try {
-                      final newExercise = await ref.read(workoutServiceProvider).createExercise(
-                        name: nameController.text.trim(),
-                        targetMuscle: selectedMuscle,
-                      );
-                      
-                      ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
-
-                      if (context.mounted) {
-                        Navigator.pop(context); // pop loading spinner
-                        Navigator.pop(context, newExercise); // pop dialog returning exercise
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        Navigator.pop(context); // pop loading spinner
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Gagal membuat latihan: $e'),
-                            backgroundColor: AppTheme.error,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text('BUAT', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (created != null && mounted) {
-      Navigator.pop(context, created); // return the new exercise to unmatched list mapper
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(exerciseControllerProvider);
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.9,
-      minChildSize: 0.5,
-      maxChildSize: 0.9,
-      builder: (_, controller) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              const Text('Pilih Latihan Terdaftar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                child: ForgeSearchBar(
-                  controller: _searchController,
-                  hintText: 'Cari latihan...',
-                  onSubmitted: (val) {
-                    ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
-                  },
-                  onClear: () {
-                    ref.read(exerciseControllerProvider.notifier).setSearch('');
-                  },
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ElevatedButton.icon(
-                  onPressed: () => _showCreateExerciseDialog(_searchController.text.trim()),
+                  onPressed: () async {
+                    final created = await showExerciseFormSheet(
+                      context,
+                      initialName: _searchController.text.trim(),
+                    );
+                    if (created != null && mounted) {
+                      Navigator.pop(context, created);
+                    }
+                  },
                   icon: const Icon(Icons.add_rounded),
                   label: const Text('Buat Latihan Baru'),
                   style: ElevatedButton.styleFrom(

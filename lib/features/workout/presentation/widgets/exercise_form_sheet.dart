@@ -10,6 +10,7 @@ import '../../models/exercise_model.dart';
 Future<ExerciseModel?> showExerciseFormSheet(
   BuildContext context, {
   ExerciseModel? exercise,
+  String? initialName,
 }) {
   return showModalBottomSheet<ExerciseModel>(
     context: context,
@@ -23,6 +24,7 @@ Future<ExerciseModel?> showExerciseFormSheet(
         builder: (context, ref, _) {
           return ExerciseFormSheet(
             exercise: exercise,
+            initialName: initialName,
             ref: ref,
             parentContext: context,
           );
@@ -34,12 +36,14 @@ Future<ExerciseModel?> showExerciseFormSheet(
 
 class ExerciseFormSheet extends StatefulWidget {
   final ExerciseModel? exercise;
+  final String? initialName;
   final WidgetRef ref;
   final BuildContext parentContext;
 
   const ExerciseFormSheet({
     super.key,
     this.exercise,
+    this.initialName,
     required this.ref,
     required this.parentContext,
   });
@@ -57,7 +61,7 @@ class _ExerciseFormSheetState extends State<ExerciseFormSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.exercise?.name);
+    _nameController = TextEditingController(text: widget.exercise?.name ?? widget.initialName);
     _selectedMuscle = widget.exercise?.targetMuscle ?? 'Chest';
   }
 
