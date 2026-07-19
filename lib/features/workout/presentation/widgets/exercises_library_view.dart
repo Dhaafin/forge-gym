@@ -151,7 +151,7 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseControllerProvider);
-    final muscles = ['All', 'Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+    final muscles = TargetMuscle.filterValues;
     final showSkeleton = state.isLoadingFirst || _localLoading;
 
     return Scaffold(

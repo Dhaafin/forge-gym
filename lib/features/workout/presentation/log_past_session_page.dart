@@ -645,7 +645,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             
             updatedExercises.add(exerciseJson);
           } else if (_selectedUnmatchedNames.contains(rawName)) {
-            final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? 'Other';
+            final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? TargetMuscle.fullBody;
             debugPrint('[LiveSession] Confirmed creation of: $rawName ($targetMuscle)');
 
             final newExercise = await service.createExercise(
@@ -870,7 +870,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             itemBuilder: (context, index) {
               final exercise = _unmatchedExercises[index];
               final rawName = exercise['raw_name'] as String? ?? 'Unnamed';
-              final muscle = exercise['inferred_target_muscle'] as String? ?? 'Other';
+              final muscle = exercise['inferred_target_muscle'] as String? ?? TargetMuscle.fullBody;
               
               final isMapped = _mappedExercises.containsKey(rawName);
 

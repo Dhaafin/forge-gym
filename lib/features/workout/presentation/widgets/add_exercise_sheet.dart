@@ -99,7 +99,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exerciseControllerProvider);
-    final muscles = ['All', 'Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+    final muscles = TargetMuscle.filterValues;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,

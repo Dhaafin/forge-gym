@@ -173,7 +173,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         } else {
           // Unmatched! Auto-create the exercise on the fly
           final rawName = exerciseJson['raw_name'] as String? ?? 'Unnamed Exercise';
-          final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? 'Other';
+          final targetMuscle = exerciseJson['inferred_target_muscle'] as String? ?? TargetMuscle.fullBody;
 
           debugPrint('[LiveSession] Auto-creating unmatched exercise: $rawName ($targetMuscle)');
           final newExercise = await service.createExercise(

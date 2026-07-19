@@ -25,3 +25,37 @@ class ExerciseModel {
     };
   }
 }
+
+abstract class TargetMuscle {
+  static const String chest = 'Chest';
+  static const String back = 'Back';
+  static const String legs = 'Legs';
+  static const String shoulders = 'Shoulders';
+  static const String arms = 'Arms';
+  static const String core = 'Core';
+  static const String cardio = 'Cardio';
+  static const String fullBody = 'Full Body';
+
+  static const List<String> values = [
+    chest,
+    back,
+    legs,
+    shoulders,
+    arms,
+    core,
+    cardio,
+    fullBody,
+  ];
+
+  static const List<String> filterValues = [
+    'All',
+    chest,
+    back,
+    legs,
+    shoulders,
+    arms,
+    core,
+    cardio,
+    fullBody,
+  ];
+}

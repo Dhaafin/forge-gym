@@ -218,7 +218,7 @@ class _TargetMuscleSelector extends StatefulWidget {
 
 class _TargetMuscleSelectorState extends State<_TargetMuscleSelector> {
   bool _isExpanded = false;
-  final List<String> _muscles = ['Chest', 'Back', 'Legs', 'Arms', 'Shoulders'];
+  final List<String> _muscles = TargetMuscle.values;
 
   @override
   Widget build(BuildContext context) {
