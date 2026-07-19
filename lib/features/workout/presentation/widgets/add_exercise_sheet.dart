@@ -244,45 +244,59 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: state.isLoadingFirst 
-                        ? 4 // 4 skeleton items
-                        : (state.exercises.isEmpty ? 1 : state.exercises.length), // exercises (or empty text)
-                    itemBuilder: (context, index) {
-                      if (state.isLoadingFirst) {
-                        return _buildSkeletonItem();
+                : NotificationListener<ScrollNotification>(
+                    onNotification: (scrollInfo) {
+                      if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                        ref.read(exerciseControllerProvider.notifier).fetchNextPage();
                       }
-
-                      if (state.exercises.isEmpty) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32.0),
-                            child: Text(
-                              'No exercises found.',
-                              style: TextStyle(color: AppTheme.textSecondary),
-                            ),
-                          ),
-                        );
-                      }
-
-                      final exercise = state.exercises[index];
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                        title: Text(
-                          exercise.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          exercise.targetMuscle,
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                        ),
-                        trailing: const Icon(
-                          Icons.add_circle_outline_rounded,
-                          color: AppTheme.primary,
-                        ),
-                        onTap: () => _onExerciseSelected(exercise),
-                      );
+                      return false;
                     },
+                    child: ListView.builder(
+                      itemCount: state.isLoadingFirst
+                          ? 4 // 4 skeleton items
+                          : (state.exercises.isEmpty
+                              ? 1
+                              : state.exercises.length + (state.isLoadingMore ? 2 : 0)),
+                      itemBuilder: (context, index) {
+                        if (state.isLoadingFirst) {
+                          return _buildSkeletonItem();
+                        }
+
+                        if (state.exercises.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32.0),
+                              child: Text(
+                                'No exercises found.',
+                                style: TextStyle(color: AppTheme.textSecondary),
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (index >= state.exercises.length) {
+                          return _buildSkeletonItem();
+                        }
+
+                        final exercise = state.exercises[index];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                          title: Text(
+                            exercise.name,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            exercise.targetMuscle,
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                          trailing: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            color: AppTheme.primary,
+                          ),
+                          onTap: () => _onExerciseSelected(exercise),
+                        );
+                      },
+                    ),
                   ),
           ),
         ],

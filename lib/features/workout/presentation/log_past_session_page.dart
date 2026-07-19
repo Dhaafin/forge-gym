@@ -1268,20 +1268,34 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
               Expanded(
                 child: state.isLoadingFirst
                     ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                    : ListView.builder(
-                        controller: controller,
-                        itemCount: state.exercises.length,
-                        itemBuilder: (context, index) {
-                          final exercise = state.exercises[index];
-                          return ListTile(
-                            title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
-                            onTap: () {
-                              Navigator.pop(context, exercise);
-                            },
-                          );
+                    : NotificationListener<ScrollNotification>(
+                        onNotification: (scrollInfo) {
+                          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                            ref.read(exerciseControllerProvider.notifier).fetchNextPage();
+                          }
+                          return false;
                         },
+                        child: ListView.builder(
+                          controller: controller,
+                          itemCount: state.exercises.length + (state.isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index >= state.exercises.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                              );
+                            }
+                            final exercise = state.exercises[index];
+                            return ListTile(
+                              title: Text(exercise.name, style: const TextStyle(color: Colors.white)),
+                              subtitle: Text(exercise.targetMuscle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.primary, size: 16),
+                              onTap: () {
+                                Navigator.pop(context, exercise);
+                              },
+                            );
+                          },
+                        ),
                       ),
               ),
             ],
