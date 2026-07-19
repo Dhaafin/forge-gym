@@ -2,11 +2,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/workout_session_model.dart';
 import '../services/workout_service.dart';
 
+enum WorkoutSortOption {
+  newest('Terbaru', 'start_time', 'desc'),
+  oldest('Terlama', 'start_time', 'asc'),
+  durationDesc('Durasi Terpanjang', 'duration_minutes', 'desc'),
+  setsDesc('Set Terbanyak', 'sets_count', 'desc');
+
+  final String label;
+  final String sortBy;
+  final String order;
+  const WorkoutSortOption(this.label, this.sortBy, this.order);
+}
+
 class WorkoutHistoryState {
   final List<WorkoutSessionModel> sessions;
   final bool isLoadingFirst;
   final bool isLoadingMore;
   final String searchQuery;
+  final String selectedDateFilter; // 'All', 'Bulan Ini', 'Tahun Ini'
+  final WorkoutSortOption selectedSortOption;
   final bool hasReachedMax;
   final int offset;
   final String? errorMessage;
@@ -16,6 +30,8 @@ class WorkoutHistoryState {
     required this.isLoadingFirst,
     required this.isLoadingMore,
     required this.searchQuery,
+    required this.selectedDateFilter,
+    required this.selectedSortOption,
     required this.hasReachedMax,
     required this.offset,
     this.errorMessage,
@@ -27,9 +43,41 @@ class WorkoutHistoryState {
       isLoadingFirst: false,
       isLoadingMore: false,
       searchQuery: '',
+      selectedDateFilter: 'All',
+      selectedSortOption: WorkoutSortOption.newest,
       hasReachedMax: false,
       offset: 0,
     );
+  }
+
+  List<WorkoutSessionModel> get displaySessions {
+    final now = DateTime.now();
+
+    // 1. Filter by Date Range
+    var list = sessions.where((s) {
+      if (selectedDateFilter == 'Bulan Ini') {
+        return s.startDateTime.year == now.year && s.startDateTime.month == now.month;
+      } else if (selectedDateFilter == 'Tahun Ini') {
+        return s.startDateTime.year == now.year;
+      }
+      return true; // 'All'
+    }).toList();
+
+    // 2. Sort List
+    list.sort((a, b) {
+      switch (selectedSortOption) {
+        case WorkoutSortOption.newest:
+          return b.startDateTime.compareTo(a.startDateTime);
+        case WorkoutSortOption.oldest:
+          return a.startDateTime.compareTo(b.startDateTime);
+        case WorkoutSortOption.durationDesc:
+          return (b.durationMinutes ?? 0).compareTo(a.durationMinutes ?? 0);
+        case WorkoutSortOption.setsDesc:
+          return b.sets.length.compareTo(a.sets.length);
+      }
+    });
+
+    return list;
   }
 
   WorkoutHistoryState copyWith({
@@ -37,6 +85,8 @@ class WorkoutHistoryState {
     bool? isLoadingFirst,
     bool? isLoadingMore,
     String? searchQuery,
+    String? selectedDateFilter,
+    WorkoutSortOption? selectedSortOption,
     bool? hasReachedMax,
     int? offset,
     String? errorMessage,
@@ -46,6 +96,8 @@ class WorkoutHistoryState {
       isLoadingFirst: isLoadingFirst ?? this.isLoadingFirst,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       searchQuery: searchQuery ?? this.searchQuery,
+      selectedDateFilter: selectedDateFilter ?? this.selectedDateFilter,
+      selectedSortOption: selectedSortOption ?? this.selectedSortOption,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       offset: offset ?? this.offset,
       errorMessage: errorMessage,
@@ -128,6 +180,16 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
     if (state.searchQuery == query) return;
     state = state.copyWith(searchQuery: query);
     fetchFirstPage();
+  }
+
+  void setDateFilter(String filter) {
+    if (state.selectedDateFilter == filter) return;
+    state = state.copyWith(selectedDateFilter: filter);
+  }
+
+  void setSortOption(WorkoutSortOption sort) {
+    if (state.selectedSortOption == sort) return;
+    state = state.copyWith(selectedSortOption: sort);
   }
 
   void addSession(WorkoutSessionModel session) {

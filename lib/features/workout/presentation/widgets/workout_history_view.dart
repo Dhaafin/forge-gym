@@ -89,9 +89,95 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
     return m == 0 ? '${h}h' : '${h}h ${m}m';
   }
 
+  void _showSortSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final currentSort = ref.watch(workoutHistoryControllerProvider).selectedSortOption;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Urutkan Riwayat Workout',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...WorkoutSortOption.values.map((option) {
+                final isSelected = currentSort == option;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primary.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.02),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primary
+                          : Colors.white.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      option.sortBy == 'duration_minutes'
+                          ? Icons.timer_rounded
+                          : option.sortBy == 'sets_count'
+                              ? Icons.repeat_rounded
+                              : option.order == 'asc'
+                                  ? Icons.update_rounded
+                                  : Icons.history_rounded,
+                      color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                    ),
+                    title: Text(
+                      option.label,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : AppTheme.textPrimary,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
+                        : null,
+                    onTap: () {
+                      ref
+                          .read(workoutHistoryControllerProvider.notifier)
+                          .setSortOption(option);
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final historyState = ref.watch(workoutHistoryControllerProvider);
+    final displaySessions = historyState.displaySessions;
     final showSkeleton = historyState.isLoadingFirst || _localLoading;
 
     return Column(
@@ -117,13 +203,109 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
           ),
         ),
 
+        // ── Filter & Sort Bar ──
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    children: ['All', 'Bulan Ini', 'Tahun Ini'].map((filter) {
+                      final isSelected = historyState.selectedDateFilter == filter;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(filter),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              ref
+                                  .read(workoutHistoryControllerProvider.notifier)
+                                  .setDateFilter(filter);
+                            }
+                          },
+                          selectedColor: AppTheme.primary,
+                          backgroundColor: AppTheme.surface,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.black : AppTheme.textPrimary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : Colors.white.withValues(alpha: 0.05),
+                            ),
+                          ),
+                          showCheckmark: false,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Material(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _showSortSheet(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: historyState.selectedSortOption != WorkoutSortOption.newest
+                                ? AppTheme.primary
+                                : Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 18,
+                              color: historyState.selectedSortOption != WorkoutSortOption.newest
+                                  ? AppTheme.primary
+                                  : AppTheme.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              historyState.selectedSortOption.label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: historyState.selectedSortOption != WorkoutSortOption.newest
+                                    ? AppTheme.primary
+                                    : AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
         // ── Content ──
         Expanded(
           child: showSkeleton
               ? _buildWorkoutsSkeleton()
-              : historyState.errorMessage != null && historyState.sessions.isEmpty
+              : historyState.errorMessage != null && displaySessions.isEmpty
                   ? _buildError(historyState.errorMessage!)
-                  : historyState.sessions.isEmpty
+                  : displaySessions.isEmpty
                       ? _buildEmpty()
                       : RefreshIndicator(
                           color: AppTheme.primary,
@@ -134,10 +316,10 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                           child: ListView.builder(
                             controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 24.0),
-                            itemCount: historyState.sessions.length +
+                            itemCount: displaySessions.length +
                                 (historyState.isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (index == historyState.sessions.length) {
+                              if (index == displaySessions.length) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 24),
                                   child: Center(
@@ -146,7 +328,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                                   ),
                                 );
                               }
-                              return _buildSessionCard(historyState.sessions[index]);
+                              return _buildSessionCard(displaySessions[index]);
                             },
                           ),
                         ),
