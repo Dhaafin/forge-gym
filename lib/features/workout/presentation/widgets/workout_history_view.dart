@@ -26,6 +26,9 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(workoutHistoryControllerProvider.notifier).resetSortToNewest();
+    });
     _triggerLocalLoading();
   }
 
@@ -33,6 +36,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
   void didUpdateWidget(WorkoutHistoryView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isActive && !oldWidget.isActive) {
+      ref.read(workoutHistoryControllerProvider.notifier).resetSortToNewest();
       _triggerLocalLoading();
     }
   }

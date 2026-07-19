@@ -192,6 +192,15 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
     state = state.copyWith(selectedSortOption: sort);
   }
 
+  void resetSortToNewest() {
+    if (state.selectedSortOption == WorkoutSortOption.newest &&
+        state.selectedDateFilter == 'All') return;
+    state = state.copyWith(
+      selectedSortOption: WorkoutSortOption.newest,
+      selectedDateFilter: 'All',
+    );
+  }
+
   void addSession(WorkoutSessionModel session) {
     state = state.copyWith(
       sessions: [session, ...state.sessions],
