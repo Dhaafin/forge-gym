@@ -115,6 +115,19 @@ class AuthenticatedHttpClient {
     );
   }
 
+  Future<http.Response> patch(
+    Uri url, {
+    Map<String, String>? extraHeaders,
+    Object? body,
+    Encoding? encoding,
+    bool includeAuth = true,
+  }) {
+    return _executeRequest(
+      (headers) async => http.patch(url, headers: {...headers, ...?extraHeaders}, body: body, encoding: encoding),
+      includeAuth: includeAuth,
+    );
+  }
+
   Future<http.Response> delete(Uri url, {Map<String, String>? extraHeaders, bool includeAuth = true}) {
     return _executeRequest(
       (headers) async => http.delete(url, headers: {...headers, ...?extraHeaders}),

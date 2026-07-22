@@ -17,6 +17,8 @@ import '../../workout/presentation/widgets/exercises_library_view.dart';
 import '../../workout/presentation/widgets/workout_history_view.dart';
 import '../../workout/presentation/widgets/analytics_view.dart';
 import '../../workout/presentation/workout_session_detail_page.dart';
+import '../../auth/presentation/profile_view.dart';
+import '../../auth/controllers/profile_controller.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -433,40 +435,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     return ExercisesLibraryView(isActive: isActive);
   }
 
-  Widget _buildProfileTab() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Icon(Icons.account_circle_rounded, size: 96, color: AppTheme.textSecondary),
-          const SizedBox(height: 16),
-          const Text(
-            'Dhaafin',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-          ),
-          const Text(
-            'Member since July 2026',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 48),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error.withValues(alpha: 0.1),
-              foregroundColor: AppTheme.error,
-              side: const BorderSide(color: AppTheme.error, width: 1),
-            ),
-            onPressed: () {
-              ref.read(authControllerProvider.notifier).logout();
-            },
-            child: const Text('LOG OUT'),
-          ),
-        ],
-      ),
-    );
+  Widget _buildProfileTab(bool isActive) {
+    return ProfileView(isActive: isActive);
   }
 
   @override
@@ -476,7 +446,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       _buildWorkoutsTab(_currentIndex == 1),
       AnalyticsView(isActive: _currentIndex == 2),
       _buildExercisesTab(_currentIndex == 3),
-      _buildProfileTab(),
+      _buildProfileTab(_currentIndex == 4),
     ];
 
     final liveSessionState = ref.watch(liveSessionControllerProvider);
@@ -555,6 +525,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ref.read(analyticsControllerProvider.notifier).loadAnalyticsData();
             } else if (index == 3) {
               ref.read(exerciseControllerProvider.notifier).fetchFirstPage();
+            } else if (index == 4) {
+              ref.read(profileControllerProvider.notifier).fetchProfile();
             }
           }
           setState(() {
