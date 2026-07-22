@@ -38,15 +38,45 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     _weightCtrl = TextEditingController();
     _heightCtrl = TextEditingController();
     _injuriesCtrl = TextEditingController();
+
+    _nameCtrl.addListener(_onFieldChanged);
+    _weightCtrl.addListener(_onFieldChanged);
+    _heightCtrl.addListener(_onFieldChanged);
+    _injuriesCtrl.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
+    _nameCtrl.removeListener(_onFieldChanged);
+    _weightCtrl.removeListener(_onFieldChanged);
+    _heightCtrl.removeListener(_onFieldChanged);
+    _injuriesCtrl.removeListener(_onFieldChanged);
     _nameCtrl.dispose();
     _weightCtrl.dispose();
     _heightCtrl.dispose();
     _injuriesCtrl.dispose();
     super.dispose();
+  }
+
+  void _onFieldChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool _hasChanges(UserProfileModel profile) {
+    final currentWeight = double.tryParse(_weightCtrl.text.trim());
+    final currentHeight = double.tryParse(_heightCtrl.text.trim());
+    final currentInjuries = _injuriesCtrl.text.trim().isEmpty ? null : _injuriesCtrl.text.trim();
+    final currentUnit = _isMetric ? 'metric' : 'imperial';
+
+    return _nameCtrl.text.trim() != profile.name ||
+        currentUnit != profile.preferredUnit ||
+        currentWeight != profile.weightKg ||
+        currentHeight != profile.heightCm ||
+        _fitnessGoal != profile.fitnessGoal ||
+        _experienceLevel != profile.experienceLevel ||
+        currentInjuries != profile.injuriesOrLimitations;
   }
 
   void _populateForm(UserProfileModel profile) {
@@ -210,8 +240,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                 return null;
               },
             ),
-            const SizedBox(height: 32),
-            _buildSaveButton(state.isSaving),
+            if (_hasChanges(profile) || state.isSaving) ...[
+              const SizedBox(height: 32),
+              _buildSaveButton(state.isSaving),
+            ],
             const SizedBox(height: 16),
             _buildLogoutButton(),
           ],
