@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/flash_message.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
 import '../../../../core/widgets/forge_spinner.dart';
+import '../../../../core/widgets/forge_bottom_sheet.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 import '../models/user_profile_model.dart';
@@ -211,20 +212,42 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             const SizedBox(height: 32),
             _buildSectionLabel('Fitness Profile'),
             const SizedBox(height: 12),
-            _buildDropdown(
+            _buildSelectorField(
               label: 'Fitness Goal',
+              valueText: fitnessGoalLabel(_fitnessGoal),
               icon: Icons.flag_outlined,
-              value: _fitnessGoal,
-              items: fitnessGoalOptions,
-              onChanged: (v) => setState(() => _fitnessGoal = v),
+              onTap: () async {
+                final selected = await showForgeOptionSelector(
+                  context: context,
+                  title: 'Select Fitness Goal',
+                  subtitle: 'What is your primary fitness focus?',
+                  options: fitnessGoalOptions,
+                  selectedValue: _fitnessGoal,
+                  iconBuilder: (key) => Icons.flag_outlined,
+                );
+                if (selected != null) {
+                  setState(() => _fitnessGoal = selected);
+                }
+              },
             ),
             const SizedBox(height: 16),
-            _buildDropdown(
+            _buildSelectorField(
               label: 'Experience Level',
+              valueText: experienceLevelLabel(_experienceLevel),
               icon: Icons.bar_chart_rounded,
-              value: _experienceLevel,
-              items: experienceLevelOptions,
-              onChanged: (v) => setState(() => _experienceLevel = v),
+              onTap: () async {
+                final selected = await showForgeOptionSelector(
+                  context: context,
+                  title: 'Select Experience Level',
+                  subtitle: 'How long have you been training?',
+                  options: experienceLevelOptions,
+                  selectedValue: _experienceLevel,
+                  iconBuilder: (key) => Icons.bar_chart_rounded,
+                );
+                if (selected != null) {
+                  setState(() => _experienceLevel = selected);
+                }
+              },
             ),
             const SizedBox(height: 16),
             _buildTextField(
@@ -461,37 +484,27 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     );
   }
 
-  // ── Dropdown ──────────────────────────────────────────────────────────────────
+  // ── Selector Field ────────────────────────────────────────────────────────────
 
-  Widget _buildDropdown({
+  Widget _buildSelectorField({
     required String label,
+    required String valueText,
     required IconData icon,
-    required String? value,
-    required Map<String, String> items,
-    required void Function(String?) onChanged,
+    required VoidCallback onTap,
   }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      dropdownColor: AppTheme.cardBg,
-      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-      icon: const Icon(Icons.expand_more_rounded,
-          color: AppTheme.textSecondary, size: 20),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.textSecondary, size: 20),
-      ),
-      items: [
-        DropdownMenuItem<String>(
-          value: null,
-          child: Text('Not set',
-              style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.7))),
+    return GestureDetector(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: AppTheme.textSecondary, size: 20),
+          suffixIcon: const Icon(Icons.expand_more_rounded, color: AppTheme.textSecondary),
         ),
-        ...items.entries.map((e) => DropdownMenuItem<String>(
-              value: e.key,
-              child: Text(e.value),
-            )),
-      ],
-      onChanged: onChanged,
+        child: Text(
+          valueText,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+        ),
+      ),
     );
   }
 
