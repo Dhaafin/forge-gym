@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
+import '../../../../core/widgets/forge_api_bottom_sheet.dart';
 import '../../controllers/analytics_controller.dart';
 import '../../models/analytics_model.dart';
 import '../../models/exercise_model.dart';
+import '../../services/workout_service.dart';
 
 class AnalyticsView extends ConsumerWidget {
   final bool isActive;
@@ -558,12 +560,29 @@ class _ExerciseProgressionSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Exercise Dropdown
-          _ExerciseDropdown(
-            exercises: state.exercises,
-            selected: state.selectedExercise,
-            onChanged: (e) {
-              if (e != null) ctrl.selectExercise(e);
+          // Exercise Selector Tile
+          _buildSelectorField(
+            label: 'Select Exercise',
+            valueText: state.selectedExercise?.name ?? 'Choose an exercise',
+            icon: Icons.search_rounded,
+            onTap: () async {
+              final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                context: context,
+                title: 'Select Exercise',
+                subtitle: 'Choose an exercise to view progression',
+                selectedValue: state.selectedExercise,
+                fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
+                      search: query,
+                      offset: offset,
+                      limit: 10,
+                    ),
+                labelBuilder: (e) => e.name,
+                idBuilder: (e) => e.id,
+                iconBuilder: (e) => Icons.fitness_center_rounded,
+              );
+              if (selected != null) {
+                ctrl.selectExercise(selected);
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -607,6 +626,28 @@ class _ExerciseProgressionSectionState
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSelectorField({
+    required String label,
+    required String valueText,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: AppTheme.textSecondary, size: 20),
+          suffixIcon: const Icon(Icons.expand_more_rounded, color: AppTheme.textSecondary),
+        ),
+        child: Text(
+          valueText,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+        ),
       ),
     );
   }
@@ -662,54 +703,7 @@ class _ProgressionToggle extends StatelessWidget {
   }
 }
 
-class _ExerciseDropdown extends StatelessWidget {
-  final List<ExerciseModel> exercises;
-  final ExerciseModel? selected;
-  final void Function(ExerciseModel?) onChanged;
 
-  const _ExerciseDropdown({
-    required this.exercises,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (exercises.isEmpty) {
-      return const Text(
-        'No exercises found.',
-        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-      );
-    }
-    return DropdownButtonFormField<ExerciseModel>(
-      value: selected,
-      isExpanded: true,
-      dropdownColor: AppTheme.cardBg,
-      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-      icon: const Icon(Icons.expand_more_rounded,
-          color: AppTheme.textSecondary, size: 20),
-      decoration: const InputDecoration(
-        labelText: 'Select Exercise',
-        prefixIcon: Icon(Icons.search_rounded,
-            color: AppTheme.textSecondary, size: 20),
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      ),
-      items: exercises
-          .map(
-            (e) => DropdownMenuItem<ExerciseModel>(
-              value: e,
-              child: Text(
-                e.name,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-    );
-  }
-}
 
 class _RecordBadges extends StatelessWidget {
   final ExerciseProgression progression;
