@@ -112,7 +112,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Urutkan Riwayat Workout',
+                    'Sort Workout History',
                     style: TextStyle(
                       color: AppTheme.primary,
                       fontSize: 18,
@@ -218,7 +218,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    children: ['All', 'Bulan Ini', 'Tahun Ini'].map((filter) {
+                    children: ['All', 'This Month', 'This Year'].map((filter) {
                       final isSelected = historyState.selectedDateFilter == filter;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8.0),

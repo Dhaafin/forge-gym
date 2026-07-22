@@ -3,10 +3,10 @@ import '../models/workout_session_model.dart';
 import '../services/workout_service.dart';
 
 enum WorkoutSortOption {
-  newest('Terbaru', 'start_time', 'desc'),
-  oldest('Terlama', 'start_time', 'asc'),
-  durationDesc('Durasi Terpanjang', 'duration_minutes', 'desc'),
-  setsDesc('Set Terbanyak', 'sets_count', 'desc');
+  newest('Newest', 'start_time', 'desc'),
+  oldest('Oldest', 'start_time', 'asc'),
+  durationDesc('Longest Duration', 'duration_minutes', 'desc'),
+  setsDesc('Most Sets', 'sets_count', 'desc');
 
   final String label;
   final String sortBy;
@@ -19,7 +19,7 @@ class WorkoutHistoryState {
   final bool isLoadingFirst;
   final bool isLoadingMore;
   final String searchQuery;
-  final String selectedDateFilter; // 'All', 'Bulan Ini', 'Tahun Ini'
+  final String selectedDateFilter; // 'All', 'This Month', 'This Year'
   final WorkoutSortOption selectedSortOption;
   final bool hasReachedMax;
   final int offset;
@@ -55,9 +55,9 @@ class WorkoutHistoryState {
 
     // 1. Filter by Date Range
     var list = sessions.where((s) {
-      if (selectedDateFilter == 'Bulan Ini') {
+      if (selectedDateFilter == 'This Month') {
         return s.startDateTime.year == now.year && s.startDateTime.month == now.month;
-      } else if (selectedDateFilter == 'Tahun Ini') {
+      } else if (selectedDateFilter == 'This Year') {
         return s.startDateTime.year == now.year;
       }
       return true; // 'All'
