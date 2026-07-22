@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/forge_skeleton.dart';
 import '../../controllers/analytics_controller.dart';
+import '../../models/analytics_model.dart';
+import '../../models/exercise_model.dart';
 
 class AnalyticsView extends ConsumerWidget {
   final bool isActive;
@@ -15,102 +18,96 @@ class AnalyticsView extends ConsumerWidget {
 
     final state = ref.watch(analyticsControllerProvider);
 
-    if (state.status == AnalyticsStatus.loading) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    }
-
-    if (state.status == AnalyticsStatus.error) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppTheme.error, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              state.errorMessage ?? 'Gagal memuat analitik',
-              style: const TextStyle(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.read(analyticsControllerProvider.notifier).loadAnalyticsData(),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.black),
-              child: const Text('COBA LAGI'),
-            ),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: () => ref.read(analyticsControllerProvider.notifier).loadAnalyticsData(),
       color: AppTheme.primary,
       backgroundColor: AppTheme.surface,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Period Selector
-            _buildPeriodSelector(ref, state.period),
+            // ── Range Selector ──────────────────────────────────────────────
+            _RangeSelector(
+              selected: state.selectedRange,
+              onChanged: (r) => ref.read(analyticsControllerProvider.notifier).setRange(r),
+            ),
             const SizedBox(height: 20),
 
-            // Summary Stats Grid
-            _buildStatsGrid(state),
+            // ── KPI Cards ───────────────────────────────────────────────────
+            if (state.overviewStatus == AnalyticsStatus.loading)
+              _KpiCardsSkeleton()
+            else if (state.overviewStatus == AnalyticsStatus.error)
+              _ErrorBanner(
+                message: state.overviewError ?? 'Failed to load analytics.',
+                onRetry: () => ref.read(analyticsControllerProvider.notifier).loadAnalyticsData(),
+              )
+            else if (state.overview != null)
+              _KpiGrid(overview: state.overview!),
+
             const SizedBox(height: 24),
 
-            // Volume Trend Card (Line Chart)
-            _buildChartCard(
-              title: 'Tren Volume Angkatan (kg)',
-              subtitle: 'Total volume beban dikali repetisi',
-              icon: Icons.show_chart_rounded,
-              child: SizedBox(
-                height: 200,
-                child: CustomPaint(
-                  painter: _LineChartPainter(points: state.volumePoints),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Workout Frequency Card (Bar Chart)
-            _buildChartCard(
-              title: 'Frekuensi Latihan (Sesi)',
-              subtitle: 'Jumlah sesi latihan yang diselesaikan',
-              icon: Icons.bar_chart_rounded,
-              child: SizedBox(
-                height: 200,
-                child: CustomPaint(
-                  painter: _BarChartPainter(points: state.frequencyPoints),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Muscle Group Shares (Doughnut Chart)
-            _buildChartCard(
-              title: 'Distribusi Volume Otot',
-              subtitle: 'Persentase set latihan berdasarkan target otot',
-              icon: Icons.pie_chart_rounded,
-              child: state.muscleGroupShares.isEmpty
-                  ? const SizedBox(
-                      height: 160,
-                      child: Center(
-                        child: Text(
-                          'Belum ada data set latihan.',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            // ── Volume Trend Chart ──────────────────────────────────────────
+            if (state.overviewStatus == AnalyticsStatus.loading)
+              _ChartSkeleton(height: 240)
+            else if (state.overview != null)
+              _ChartCard(
+                title: 'Volume Trend',
+                subtitle: 'Daily lifting volume (${state.overview!.unit})',
+                icon: Icons.show_chart_rounded,
+                child: state.overview!.volumeHistory.isEmpty
+                    ? _EmptyChart(message: 'No volume data for this period.')
+                    : SizedBox(
+                        height: 200,
+                        child: CustomPaint(
+                          painter: _AreaChartPainter(
+                            points: state.overview!.volumeHistory,
+                            unit: state.overview!.unit,
+                          ),
+                          size: Size.infinite,
                         ),
                       ),
-                    )
-                  : _buildMuscleDistributionSection(state.muscleGroupShares),
-            ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ── Muscle Distribution Chart ───────────────────────────────────
+            if (state.overviewStatus == AnalyticsStatus.loading)
+              _ChartSkeleton(height: 200)
+            else if (state.overview != null)
+              _ChartCard(
+                title: 'Muscle Distribution',
+                subtitle: 'Total sets per target muscle',
+                icon: Icons.pie_chart_rounded,
+                child: state.overview!.muscleDistribution.isEmpty
+                    ? _EmptyChart(message: 'No muscle data for this period.')
+                    : _MuscleDistributionBody(
+                        distribution: state.overview!.muscleDistribution,
+                      ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ── Exercise Progression Chart ──────────────────────────────────
+            _ExerciseProgressionSection(state: state),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildPeriodSelector(WidgetRef ref, AnalyticsPeriod current) {
+// ── Range Selector ────────────────────────────────────────────────────────────
+
+class _RangeSelector extends StatelessWidget {
+  final AnalyticsRange selected;
+  final void Function(AnalyticsRange) onChanged;
+
+  const _RangeSelector({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -119,37 +116,34 @@ class AnalyticsView extends ConsumerWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
-        children: AnalyticsPeriod.values.map((p) {
-          final isSelected = p == current;
-          String label = '';
-          switch (p) {
-            case AnalyticsPeriod.week:
-              label = 'Minggu';
-              break;
-            case AnalyticsPeriod.month:
-              label = 'Bulan';
-              break;
-            case AnalyticsPeriod.year:
-              label = 'Tahun';
-              break;
-          }
-
+        children: AnalyticsRange.values.map((range) {
+          final isSelected = range == selected;
           return Expanded(
             child: GestureDetector(
-              onTap: () => ref.read(analyticsControllerProvider.notifier).setPeriod(p),
-              child: Container(
+              onTap: () => onChanged(range),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? AppTheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                      : null,
                 ),
                 child: Text(
-                  label,
+                  range.label,
                   style: TextStyle(
-                    color: isSelected ? Colors.black : Colors.white60,
+                    color: isSelected ? Colors.black : Colors.white54,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -159,47 +153,82 @@ class AnalyticsView extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildStatsGrid(AnalyticsState state) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.45,
+// ── KPI Grid ──────────────────────────────────────────────────────────────────
+
+class _KpiGrid extends StatelessWidget {
+  final AnalyticsOverview overview;
+  const _KpiGrid({required this.overview});
+
+  String _formatVolume(double vol, String unit) {
+    if (vol >= 1000) {
+      return '${(vol / 1000).toStringAsFixed(1)}k ${unit}';
+    }
+    return '${vol.toStringAsFixed(0)} $unit';
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes == 0) return '0m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}m';
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
-        _buildStatCard(
-          'Total Volume',
-          '${state.totalVolume >= 1000 ? (state.totalVolume / 1000).toStringAsFixed(1) : state.totalVolume.toInt()} ${state.totalVolume >= 1000 ? 't' : 'kg'}',
-          Icons.fitness_center_rounded,
-          AppTheme.primary,
+        Expanded(
+          child: _KpiCard(
+            label: 'Total Volume',
+            value: _formatVolume(overview.totalVolume, overview.unit),
+            icon: Icons.fitness_center_rounded,
+            color: AppTheme.primary,
+          ),
         ),
-        _buildStatCard(
-          'Total Sesi',
-          '${state.workoutCount}',
-          Icons.calendar_today_rounded,
-          Colors.blueAccent,
+        const SizedBox(width: 10),
+        Expanded(
+          child: _KpiCard(
+            label: 'Workouts',
+            value: '${overview.totalWorkouts}',
+            icon: Icons.calendar_today_rounded,
+            color: Colors.blueAccent,
+          ),
         ),
-        _buildStatCard(
-          'Rata-rata Durasi',
-          '${state.avgDuration.toInt()} m',
-          Icons.timer_rounded,
-          Colors.purpleAccent,
-        ),
-        _buildStatCard(
-          'Rekor Baru (PR)',
-          '${state.prsCount}',
-          Icons.emoji_events_rounded,
-          Colors.orangeAccent,
+        const SizedBox(width: 10),
+        Expanded(
+          child: _KpiCard(
+            label: 'Duration',
+            value: _formatDuration(overview.totalDurationMinutes),
+            icon: Icons.timer_rounded,
+            color: Colors.purpleAccent,
+          ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+class _KpiCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _KpiCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -207,38 +236,60 @@ class AnalyticsView extends ConsumerWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              Icon(icon, color: color.withValues(alpha: 0.8), size: 18),
+              Icon(icon, color: color.withValues(alpha: 0.8), size: 16),
             ],
           ),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               letterSpacing: -0.5,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildChartCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Widget child,
-  }) {
+// ── Chart Card Shell ──────────────────────────────────────────────────────────
+
+class _ChartCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget child;
+  final Widget? headerTrailing;
+
+  const _ChartCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.child,
+    this.headerTrailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -250,106 +301,222 @@ class AnalyticsView extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(icon, color: AppTheme.primary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
+              if (headerTrailing != null) headerTrailing!,
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           child,
         ],
       ),
     );
   }
+}
 
-  Widget _buildMuscleDistributionSection(Map<String, double> shares) {
-    // Sort shares descending
-    final sortedList = shares.entries.toList()
+// ── Empty Chart Placeholder ───────────────────────────────────────────────────
+
+class _EmptyChart extends StatelessWidget {
+  final String message;
+  const _EmptyChart({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 120,
+      child: Center(
+        child: Text(
+          message,
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error Banner ──────────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorBanner({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: AppTheme.error, size: 36),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style:
+                const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary, size: 18),
+            label: const Text('Retry', style: TextStyle(color: AppTheme.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Skeleton helpers ──────────────────────────────────────────────────────────
+
+class _KpiCardsSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(
+        3,
+        (i) => Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
+            child: const ForgeSkeleton(
+              height: 80,
+              width: double.infinity,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChartSkeleton extends StatelessWidget {
+  final double height;
+  const _ChartSkeleton({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return ForgeSkeleton(
+      height: height,
+      width: double.infinity,
+      borderRadius: const BorderRadius.all(Radius.circular(20)),
+    );
+  }
+}
+
+// ── Muscle Distribution ───────────────────────────────────────────────────────
+
+class _MuscleDistributionBody extends StatelessWidget {
+  final Map<String, int> distribution;
+  const _MuscleDistributionBody({required this.distribution});
+
+  static const _chartColors = [
+    AppTheme.primary,
+    Colors.blueAccent,
+    Colors.purpleAccent,
+    Colors.orangeAccent,
+    Colors.pinkAccent,
+    Colors.tealAccent,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final total = distribution.values.fold(0, (a, b) => a + b);
+    if (total == 0) return _EmptyChart(message: 'No set data for this period.');
+
+    final sorted = distribution.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Limit to top 5, rest as 'Other'
-    final topList = sortedList.take(5).toList();
-    double otherSum = 0.0;
-    if (sortedList.length > 5) {
-      for (int i = 5; i < sortedList.length; i++) {
-        otherSum += sortedList[i].value;
-      }
-      topList.add(MapEntry('Other', otherSum));
+    final top = sorted.take(5).toList();
+    if (sorted.length > 5) {
+      final otherSum = sorted.skip(5).fold(0, (acc, e) => acc + e.value);
+      top.add(MapEntry('Other', otherSum));
     }
 
-    final chartColors = [
-      AppTheme.primary,
-      Colors.blueAccent,
-      Colors.purpleAccent,
-      Colors.orangeAccent,
-      Colors.pinkAccent,
-      Colors.tealAccent,
-    ];
+    final colors = {
+      for (int i = 0; i < top.length; i++)
+        top[i].key: _chartColors[i % _chartColors.length]
+    };
 
-    final Map<String, Color> shareColors = {};
-    for (int i = 0; i < topList.length; i++) {
-      shareColors[topList[i].key] = chartColors[i % chartColors.length];
-    }
+    // compute shares
+    final topTotal = top.fold(0, (acc, e) => acc + e.value);
 
     return Row(
       children: [
-        // Doughnut Chart Painter
         Expanded(
           flex: 4,
           child: AspectRatio(
             aspectRatio: 1.0,
             child: CustomPaint(
-              painter: _DoughnutChartPainter(
-                shares: topList,
-                colors: shareColors,
-              ),
+              painter: _DonutPainter(entries: top, colors: colors),
             ),
           ),
         ),
         const SizedBox(width: 24),
-        // Legend
         Expanded(
           flex: 5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: topList.map((entry) {
-              final color = shareColors[entry.key] ?? Colors.grey;
-              final percent = (entry.value * 100).toInt();
-
+            children: top.map((entry) {
+              final color = colors[entry.key] ?? Colors.grey;
+              final pct = topTotal > 0
+                  ? ((entry.value / topTotal) * 100).round()
+                  : 0;
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
                     Container(
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
+                          color: color, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         entry.key,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
-                        maxLines: 1,
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Text(
-                      '$percent%',
-                      style: const TextStyle(color: Colors.white30, fontSize: 12, fontWeight: FontWeight.bold),
+                      '$pct%',
+                      style: const TextStyle(
+                          color: Colors.white30,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -362,344 +529,557 @@ class AnalyticsView extends ConsumerWidget {
   }
 }
 
-// -------------------------------------------------------------
-// Custom Painters for charts
-// -------------------------------------------------------------
+// ── Exercise Progression Section ──────────────────────────────────────────────
 
-class _LineChartPainter extends CustomPainter {
-  final List<ProgressPoint> points;
-  _LineChartPainter({required this.points});
+class _ExerciseProgressionSection extends ConsumerStatefulWidget {
+  final AnalyticsState state;
+  const _ExerciseProgressionSection({required this.state});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
+  ConsumerState<_ExerciseProgressionSection> createState() =>
+      _ExerciseProgressionSectionState();
+}
 
-    final double paddingLeft = 35.0;
-    final double paddingRight = 10.0;
-    final double paddingTop = 10.0;
-    final double paddingBottom = 25.0;
+class _ExerciseProgressionSectionState
+    extends ConsumerState<_ExerciseProgressionSection> {
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final ctrl = ref.read(analyticsControllerProvider.notifier);
 
-    final double width = size.width - paddingLeft - paddingRight;
-    final double height = size.height - paddingTop - paddingBottom;
+    return _ChartCard(
+      title: 'Exercise Progression',
+      subtitle: state.selectedExercise?.name ?? 'Select an exercise',
+      icon: Icons.trending_up_rounded,
+      headerTrailing: _ProgressionToggle(
+        selected: state.progressionMetric,
+        onChanged: (m) => ctrl.setProgressionMetric(m),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Exercise Dropdown
+          _ExerciseDropdown(
+            exercises: state.exercises,
+            selected: state.selectedExercise,
+            onChanged: (e) {
+              if (e != null) ctrl.selectExercise(e);
+            },
+          ),
+          const SizedBox(height: 16),
 
-    // Find min and max Y
-    double maxY = points.map((p) => p.value).reduce(math.max);
-    double minY = 0.0; // always baseline at 0 for weight volume
-    if (maxY == 0.0) maxY = 1.0;
+          // Records badges
+          if (state.progressionStatus == AnalyticsStatus.success &&
+              state.progression != null)
+            _RecordBadges(
+              progression: state.progression!,
+              metric: state.progressionMetric,
+            ),
 
-    // Draw horizontal grid lines
-    final Paint gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..strokeWidth = 1.0;
+          const SizedBox(height: 16),
 
-    final int gridLines = 4;
-    for (int i = 0; i <= gridLines; i++) {
-      final double y = paddingTop + height - (i * height / gridLines);
-      canvas.drawLine(
-        Offset(paddingLeft, y),
-        Offset(paddingLeft + width, y),
-        gridPaint,
-      );
+          // Chart
+          if (state.progressionStatus == AnalyticsStatus.loading)
+            const ForgeSkeleton(
+              height: 200,
+              width: double.infinity,
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+            )
+          else if (state.progressionStatus == AnalyticsStatus.error)
+            _EmptyChart(
+                message: state.progressionError ?? 'Failed to load progression.')
+          else if (state.progression == null || state.progression!.history.isEmpty)
+            _EmptyChart(
+                message: 'No progression data found for this exercise.')
+          else
+            SizedBox(
+              height: 200,
+              child: CustomPaint(
+                painter: _ProgressionChartPainter(
+                  points: state.progression!.history,
+                  metric: state.progressionMetric,
+                  unit: state.progression!.unit,
+                ),
+                size: Size.infinite,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
-      // Y Axis Label
-      final double gridVal = minY + (i * (maxY - minY) / gridLines);
-      String yLabel;
-      if (gridVal >= 1000) {
-        yLabel = '${(gridVal / 1000).toStringAsFixed(1)}k';
-      } else {
-        yLabel = '${gridVal.toInt()}';
-      }
+class _ProgressionToggle extends StatelessWidget {
+  final ProgressionMetric selected;
+  final void Function(ProgressionMetric) onChanged;
+  const _ProgressionToggle(
+      {required this.selected, required this.onChanged});
 
-      _drawText(
-        canvas,
-        Offset(paddingLeft - 8, y - 7),
-        yLabel,
-        Colors.white30,
-        10,
-        Alignment.centerRight,
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleBtn('Weight', ProgressionMetric.maxWeight),
+          const SizedBox(width: 3),
+          _toggleBtn('1RM', ProgressionMetric.estimated1rm),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleBtn(String label, ProgressionMetric m) {
+    final isSelected = selected == m;
+    return GestureDetector(
+      onTap: () => onChanged(m),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.white54,
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExerciseDropdown extends StatelessWidget {
+  final List<ExerciseModel> exercises;
+  final ExerciseModel? selected;
+  final void Function(ExerciseModel?) onChanged;
+
+  const _ExerciseDropdown({
+    required this.exercises,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (exercises.isEmpty) {
+      return const Text(
+        'No exercises found.',
+        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
       );
     }
+    return DropdownButtonFormField<ExerciseModel>(
+      value: selected,
+      isExpanded: true,
+      dropdownColor: AppTheme.cardBg,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      icon: const Icon(Icons.expand_more_rounded,
+          color: AppTheme.textSecondary, size: 20),
+      decoration: const InputDecoration(
+        labelText: 'Select Exercise',
+        prefixIcon: Icon(Icons.search_rounded,
+            color: AppTheme.textSecondary, size: 20),
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      items: exercises
+          .map(
+            (e) => DropdownMenuItem<ExerciseModel>(
+              value: e,
+              child: Text(
+                e.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+}
 
-    // Map points to canvas coordinates
-    final List<Offset> offsetPoints = [];
-    final double dx = points.length > 1 ? width / (points.length - 1) : width;
+class _RecordBadges extends StatelessWidget {
+  final ExerciseProgression progression;
+  final ProgressionMetric metric;
+  const _RecordBadges({required this.progression, required this.metric});
 
-    for (int i = 0; i < points.length; i++) {
-      final double px = paddingLeft + (i * dx);
-      final double py = paddingTop + height - ((points[i].value - minY) / (maxY - minY) * height);
-      offsetPoints.add(Offset(px, py));
+  @override
+  Widget build(BuildContext context) {
+    final isWeight = metric == ProgressionMetric.maxWeight;
+    final value = isWeight
+        ? '${progression.maxWeight.toStringAsFixed(1)} ${progression.unit}'
+        : '${progression.maxEstimated1rm.toStringAsFixed(1)} ${progression.unit}';
+    final label = isWeight ? '🏆 All-time Max Weight' : '🏆 All-time Est. 1RM';
 
-      // X Axis Label
-      _drawText(
-        canvas,
-        Offset(px, paddingTop + height + 8),
-        points[i].label,
-        Colors.white30,
-        10,
-        Alignment.topCenter,
-      );
-    }
-
-    // Draw area fill under the line
-    if (offsetPoints.length > 1) {
-      final Path fillPath = Path()
-        ..moveTo(offsetPoints.first.dx, paddingTop + height);
-
-      for (var point in offsetPoints) {
-        fillPath.lineTo(point.dx, point.dy);
-      }
-      fillPath.lineTo(offsetPoints.last.dx, paddingTop + height);
-      fillPath.close();
-
-      final Paint fillPaint = Paint()
-        ..shader = LinearGradient(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
           colors: [
-            AppTheme.primary.withValues(alpha: 0.25),
-            AppTheme.primary.withValues(alpha: 0.0),
+            AppTheme.primary.withValues(alpha: 0.12),
+            AppTheme.primary.withValues(alpha: 0.04),
           ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(Rect.fromLTRB(paddingLeft, paddingTop, paddingLeft + width, paddingTop + height));
-
-      canvas.drawPath(fillPath, fillPaint);
-    }
-
-    // Draw neon curve path
-    final Paint linePaint = Paint()
-      ..color = AppTheme.primary
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    // Glowing effect
-    final Paint shadowPaint = Paint()
-      ..color = AppTheme.primary.withValues(alpha: 0.4)
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke
-      ..imageFilter = ImageFilter.blur(sigmaX: 3, sigmaY: 3);
-
-    if (offsetPoints.length > 1) {
-      final Path linePath = Path()..moveTo(offsetPoints.first.dx, offsetPoints.first.dy);
-      for (int i = 1; i < offsetPoints.length; i++) {
-        // smooth bezier curves
-        final prev = offsetPoints[i - 1];
-        final curr = offsetPoints[i];
-        final controlX1 = prev.dx + (curr.dx - prev.dx) / 2;
-        final controlY1 = prev.dy;
-        final controlX2 = prev.dx + (curr.dx - prev.dx) / 2;
-        final controlY2 = curr.dy;
-
-        linePath.cubicTo(controlX1, controlY1, controlX2, controlY2, curr.dx, curr.dy);
-      }
-
-      canvas.drawPath(linePath, shadowPaint);
-      canvas.drawPath(linePath, linePaint);
-    }
-
-    // Draw point circles
-    final Paint outerPointPaint = Paint()..color = AppTheme.primary;
-    final Paint innerPointPaint = Paint()..color = Colors.black;
-
-    for (var point in offsetPoints) {
-      canvas.drawCircle(point, 5.0, outerPointPaint);
-      canvas.drawCircle(point, 2.5, innerPointPaint);
-    }
-  }
-
-  void _drawText(Canvas canvas, Offset offset, String text, Color color, double size, Alignment align) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(color: color, fontSize: size, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
       ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    double dx = offset.dx;
-    if (align == Alignment.centerRight) {
-      dx -= tp.width;
-    } else if (align == Alignment.topCenter) {
-      dx -= tp.width / 2;
-    }
-
-    tp.paint(canvas, Offset(dx, offset.dy));
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: AppTheme.textSecondary, fontSize: 12)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) => oldDelegate.points != points;
 }
 
-class _BarChartPainter extends CustomPainter {
-  final List<ProgressPoint> points;
-  _BarChartPainter({required this.points});
+// ── Custom Painters ───────────────────────────────────────────────────────────
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
-
-    final double paddingLeft = 30.0;
-    final double paddingRight = 10.0;
-    final double paddingTop = 10.0;
-    final double paddingBottom = 25.0;
-
-    final double width = size.width - paddingLeft - paddingRight;
-    final double height = size.height - paddingTop - paddingBottom;
-
-    // Find max Y
-    double maxY = points.map((p) => p.value).reduce(math.max);
-    if (maxY == 0.0) maxY = 1.0;
-
-    // Ensure integer levels for frequencies
-    if (maxY < 5) maxY = 5;
-
-    // Draw horizontal grid lines
-    final Paint gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..strokeWidth = 1.0;
-
-    // Reduce number of lines if too tall
-    final int interval = (maxY / 5).ceil();
-
-    for (int i = 0; i <= maxY; i += interval) {
-      final double y = paddingTop + height - (i * height / maxY);
-      canvas.drawLine(
-        Offset(paddingLeft, y),
-        Offset(paddingLeft + width, y),
-        gridPaint,
-      );
-
-      // Y axis label
-      _drawText(
-        canvas,
-        Offset(paddingLeft - 8, y - 7),
-        '$i',
-        Colors.white30,
-        10,
-        Alignment.centerRight,
-      );
-    }
-
-    final double totalBars = points.length.toDouble();
-    final double spacingPercent = 0.35; // Spacing ratio between bars
-    final double totalSpacing = width * spacingPercent;
-    final double totalBarWidths = width - totalSpacing;
-    final double barWidth = totalBarWidths / totalBars;
-    final double spacing = totalSpacing / (totalBars + 1);
-
-    final Paint barPaint = Paint()
-      ..color = Colors.blueAccent
-      ..style = PaintingStyle.fill;
-
-    // Glowing border for bar chart
-    final Paint glowPaint = Paint()
-      ..color = Colors.blueAccent.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill
-      ..imageFilter = ImageFilter.blur(sigmaX: 4, sigmaY: 4);
-
-    for (int i = 0; i < points.length; i++) {
-      final double barHeight = (points[i].value / maxY) * height;
-      if (barHeight == 0.0) {
-        // Just draw label
-        final double bx = paddingLeft + spacing + (i * (barWidth + spacing)) + (barWidth / 2);
-        _drawText(
-          canvas,
-          Offset(bx, paddingTop + height + 8),
-          points[i].label,
-          Colors.white30,
-          10,
-          Alignment.topCenter,
-        );
-        continue;
-      }
-
-      final double bx = paddingLeft + spacing + (i * (barWidth + spacing));
-      final double by = paddingTop + height - barHeight;
-
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTRB(bx, by, bx + barWidth, paddingTop + height),
-        const Radius.circular(6),
-      );
-
-      canvas.drawRRect(rect, glowPaint);
-      canvas.drawRRect(rect, barPaint);
-
-      // X Label
-      _drawText(
-        canvas,
-        Offset(bx + (barWidth / 2), paddingTop + height + 8),
-        points[i].label,
-        Colors.white30,
-        10,
-        Alignment.topCenter,
-      );
-    }
-  }
-
-  void _drawText(Canvas canvas, Offset offset, String text, Color color, double size, Alignment align) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(color: color, fontSize: size, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    double dx = offset.dx;
-    if (align == Alignment.centerRight) {
-      dx -= tp.width;
-    } else if (align == Alignment.topCenter) {
-      dx -= tp.width / 2;
-    }
-
-    tp.paint(canvas, Offset(dx, offset.dy));
-  }
-
-  @override
-  bool shouldRepaint(covariant _BarChartPainter oldDelegate) => oldDelegate.points != points;
-}
-
-class _DoughnutChartPainter extends CustomPainter {
-  final List<MapEntry<String, double>> shares;
+class _DonutPainter extends CustomPainter {
+  final List<MapEntry<String, int>> entries;
   final Map<String, Color> colors;
 
-  _DoughnutChartPainter({required this.shares, required this.colors});
+  const _DonutPainter({required this.entries, required this.colors});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double radius = math.min(size.width, size.height) / 2;
-    final Offset center = Offset(size.width / 2, size.height / 2);
+    final total = entries.fold(0, (acc, e) => acc + e.value);
+    if (total == 0) return;
 
-    final double strokeWidth = radius * 0.35;
-    final double chartRadius = radius - (strokeWidth / 2);
+    final radius = math.min(size.width, size.height) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+    final strokeWidth = radius * 0.35;
+    final chartRadius = radius - strokeWidth / 2;
 
     double startAngle = -math.pi / 2;
-
-    final Paint arcPaint = Paint()
+    final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.butt;
 
-    for (final entry in shares) {
-      final sweepAngle = entry.value * 2 * math.pi;
-      final color = colors[entry.key] ?? Colors.grey;
-
-      arcPaint.color = color;
-      
+    for (final entry in entries) {
+      final sweep = (entry.value / total) * 2 * math.pi;
+      paint.color = colors[entry.key] ?? Colors.grey;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: chartRadius),
         startAngle,
-        sweepAngle,
+        sweep,
         false,
-        arcPaint,
+        paint,
       );
-
-      startAngle += sweepAngle;
+      startAngle += sweep;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DoughnutChartPainter oldDelegate) {
-    return oldDelegate.shares != shares || oldDelegate.colors != colors;
+  bool shouldRepaint(covariant _DonutPainter old) =>
+      old.entries != entries || old.colors != colors;
+}
+
+class _AreaChartPainter extends CustomPainter {
+  final List<VolumeHistoryPoint> points;
+  final String unit;
+
+  const _AreaChartPainter({required this.points, required this.unit});
+
+  static const double _padL = 45.0;
+  static const double _padR = 10.0;
+  static const double _padT = 10.0;
+  static const double _padB = 28.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final w = size.width - _padL - _padR;
+    final h = size.height - _padT - _padB;
+
+    double maxY = points.map((p) => p.volume).reduce(math.max);
+    if (maxY == 0) maxY = 1;
+
+    // Grid lines
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+
+    for (int i = 0; i <= 4; i++) {
+      final y = _padT + h - (i * h / 4);
+      canvas.drawLine(Offset(_padL, y), Offset(_padL + w, y), gridPaint);
+
+      final val = (maxY * i / 4);
+      final label = val >= 1000
+          ? '${(val / 1000).toStringAsFixed(1)}k'
+          : val.toInt().toString();
+      _drawText(canvas, Offset(_padL - 6, y - 7), label, Colors.white30, 9,
+          Alignment.centerRight);
+    }
+
+    // Map to canvas coords
+    final dx = points.length > 1 ? w / (points.length - 1) : w;
+    final offsets = <Offset>[];
+    for (int i = 0; i < points.length; i++) {
+      final px = _padL + i * dx;
+      final py = _padT + h - (points[i].volume / maxY * h);
+      offsets.add(Offset(px, py));
+    }
+
+    // X labels — show a subset to avoid overlap
+    final step = (points.length / 5).ceil().clamp(1, points.length);
+    for (int i = 0; i < points.length; i += step) {
+      final dt = points[i].date;
+      final label = '${_monthAbbr(dt.month)} ${dt.day}';
+      _drawText(
+        canvas,
+        Offset(offsets[i].dx, _padT + h + 6),
+        label,
+        Colors.white30,
+        9,
+        Alignment.topCenter,
+      );
+    }
+
+    // Area fill
+    if (offsets.length > 1) {
+      final fillPath = Path()
+        ..moveTo(offsets.first.dx, _padT + h);
+      for (final o in offsets) {
+        fillPath.lineTo(o.dx, o.dy);
+      }
+      fillPath
+        ..lineTo(offsets.last.dx, _padT + h)
+        ..close();
+
+      canvas.drawPath(
+        fillPath,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              AppTheme.primary.withValues(alpha: 0.28),
+              AppTheme.primary.withValues(alpha: 0.0),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(Rect.fromLTRB(_padL, _padT, _padL + w, _padT + h)),
+      );
+    }
+
+    // Smooth line
+    final linePath = Path()..moveTo(offsets.first.dx, offsets.first.dy);
+    for (int i = 1; i < offsets.length; i++) {
+      final prev = offsets[i - 1];
+      final curr = offsets[i];
+      final cpX = prev.dx + (curr.dx - prev.dx) / 2;
+      linePath.cubicTo(cpX, prev.dy, cpX, curr.dy, curr.dx, curr.dy);
+    }
+
+    // Glow
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = AppTheme.primary.withValues(alpha: 0.4)
+        ..strokeWidth = 6
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..imageFilter = ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+    );
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = AppTheme.primary
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Dots
+    for (final o in offsets) {
+      canvas.drawCircle(o, 4.5, Paint()..color = AppTheme.primary);
+      canvas.drawCircle(o, 2.5, Paint()..color = Colors.black);
+    }
   }
+
+  String _monthAbbr(int m) {
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+    return months[m - 1];
+  }
+
+  void _drawText(Canvas canvas, Offset offset, String text, Color color,
+      double size, Alignment align) {
+    final tp = TextPainter(
+      text: TextSpan(
+          text: text,
+          style: TextStyle(
+              color: color,
+              fontSize: size,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace')),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    double dx = offset.dx;
+    if (align == Alignment.centerRight) dx -= tp.width;
+    if (align == Alignment.topCenter) dx -= tp.width / 2;
+    tp.paint(canvas, Offset(dx, offset.dy));
+  }
+
+  @override
+  bool shouldRepaint(covariant _AreaChartPainter old) =>
+      old.points != points || old.unit != unit;
+}
+
+class _ProgressionChartPainter extends CustomPainter {
+  final List<ExerciseProgressionPoint> points;
+  final ProgressionMetric metric;
+  final String unit;
+
+  const _ProgressionChartPainter({
+    required this.points,
+    required this.metric,
+    required this.unit,
+  });
+
+  static const double _padL = 48.0;
+  static const double _padR = 10.0;
+  static const double _padT = 10.0;
+  static const double _padB = 28.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+
+    final w = size.width - _padL - _padR;
+    final h = size.height - _padT - _padB;
+
+    final values = points
+        .map((p) => metric == ProgressionMetric.maxWeight
+            ? p.maxWeight
+            : p.estimated1rm)
+        .toList();
+
+    double minY = values.reduce(math.min);
+    double maxY = values.reduce(math.max);
+    if (maxY == minY) {
+      minY = (minY - 10).clamp(0, double.infinity);
+      maxY += 10;
+    }
+
+    // Grid
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+
+    for (int i = 0; i <= 4; i++) {
+      final y = _padT + h - (i * h / 4);
+      canvas.drawLine(Offset(_padL, y), Offset(_padL + w, y), gridPaint);
+      final val = minY + (maxY - minY) * i / 4;
+      _drawText(canvas, Offset(_padL - 6, y - 7), '${val.toStringAsFixed(0)}',
+          Colors.white30, 9, Alignment.centerRight);
+    }
+
+    final dx = points.length > 1 ? w / (points.length - 1) : w;
+    final offsets = <Offset>[];
+    for (int i = 0; i < points.length; i++) {
+      final v = metric == ProgressionMetric.maxWeight
+          ? points[i].maxWeight
+          : points[i].estimated1rm;
+      final px = _padL + i * dx;
+      final py = _padT + h - ((v - minY) / (maxY - minY) * h);
+      offsets.add(Offset(px, py));
+    }
+
+    // X labels
+    final step = (points.length / 5).ceil().clamp(1, points.length);
+    for (int i = 0; i < points.length; i += step) {
+      final dt = points[i].date;
+      final label = '${_monthAbbr(dt.month)} ${dt.day}';
+      _drawText(canvas, Offset(offsets[i].dx, _padT + h + 6), label,
+          Colors.white30, 9, Alignment.topCenter);
+    }
+
+    // Line
+    final linePath = Path()..moveTo(offsets.first.dx, offsets.first.dy);
+    for (int i = 1; i < offsets.length; i++) {
+      final prev = offsets[i - 1];
+      final curr = offsets[i];
+      final cpX = prev.dx + (curr.dx - prev.dx) / 2;
+      linePath.cubicTo(cpX, prev.dy, cpX, curr.dy, curr.dx, curr.dy);
+    }
+
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = Colors.purpleAccent.withValues(alpha: 0.4)
+        ..strokeWidth = 6
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..imageFilter = ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+    );
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = Colors.purpleAccent
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    for (final o in offsets) {
+      canvas.drawCircle(o, 4.5, Paint()..color = Colors.purpleAccent);
+      canvas.drawCircle(o, 2.5, Paint()..color = Colors.black);
+    }
+  }
+
+  String _monthAbbr(int m) {
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+    return months[m - 1];
+  }
+
+  void _drawText(Canvas canvas, Offset offset, String text, Color color,
+      double size, Alignment align) {
+    final tp = TextPainter(
+      text: TextSpan(
+          text: text,
+          style: TextStyle(
+              color: color,
+              fontSize: size,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace')),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    double dx = offset.dx;
+    if (align == Alignment.centerRight) dx -= tp.width;
+    if (align == Alignment.topCenter) dx -= tp.width / 2;
+    tp.paint(canvas, Offset(dx, offset.dy));
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProgressionChartPainter old) =>
+      old.points != points || old.metric != metric || old.unit != unit;
 }
