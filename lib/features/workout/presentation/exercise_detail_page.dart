@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
-import '../../controllers/exercise_history_controller.dart';
-import '../../models/exercise_history_model.dart';
-import '../../models/exercise_model.dart';
+import '../controllers/exercise_history_controller.dart';
+import '../models/exercise_history_model.dart';
+import '../models/exercise_model.dart';
 
 class ExerciseDetailPage extends ConsumerStatefulWidget {
   final ExerciseModel exercise;
