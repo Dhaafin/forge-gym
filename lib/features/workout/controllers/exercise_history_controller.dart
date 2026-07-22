@@ -48,77 +48,94 @@ class ExerciseHistoryState {
   }
 }
 
-final exerciseHistoryControllerProvider = NotifierProviderFamily<
-    ExerciseHistoryController, ExerciseHistoryState, String>(
+final exerciseHistoryControllerProvider = NotifierProvider<
+    ExerciseHistoryController, Map<String, ExerciseHistoryState>>(
   ExerciseHistoryController.new,
 );
 
 class ExerciseHistoryController
-    extends FamilyNotifier<ExerciseHistoryState, String> {
+    extends Notifier<Map<String, ExerciseHistoryState>> {
   static const int _limit = 15;
 
   @override
-  ExerciseHistoryState build(String arg) {
-    Future.microtask(() => fetchFirstPage());
-    return ExerciseHistoryState.initial();
+  Map<String, ExerciseHistoryState> build() {
+    return const {};
   }
 
-  String get _exerciseId => arg;
+  Future<void> fetchFirstPage(String exerciseId) async {
+    final currentMap = Map<String, ExerciseHistoryState>.from(state);
+    final currentState = currentMap[exerciseId] ?? ExerciseHistoryState.initial();
 
-  Future<void> fetchFirstPage() async {
-    state = state.copyWith(
+    currentMap[exerciseId] = currentState.copyWith(
       status: ExerciseHistoryStatus.loading,
       sessions: [],
       offset: 0,
       hasMore: true,
       clearError: true,
     );
+    state = currentMap;
+
     try {
       final service = ref.read(workoutServiceProvider);
       final result = await service.fetchExerciseHistory(
-        exerciseId: _exerciseId,
+        exerciseId: exerciseId,
         limit: _limit,
         offset: 0,
       );
-      state = state.copyWith(
+
+      final updatedMap = Map<String, ExerciseHistoryState>.from(state);
+      updatedMap[exerciseId] = ExerciseHistoryState(
         data: result,
         sessions: result.history,
         status: ExerciseHistoryStatus.success,
         hasMore: result.history.length >= _limit,
         offset: result.history.length,
       );
+      state = updatedMap;
     } catch (e) {
-      state = state.copyWith(
+      final updatedMap = Map<String, ExerciseHistoryState>.from(state);
+      updatedMap[exerciseId] = (updatedMap[exerciseId] ?? ExerciseHistoryState.initial()).copyWith(
         status: ExerciseHistoryStatus.error,
         error: e.toString().replaceAll('Exception: ', ''),
       );
+      state = updatedMap;
     }
   }
 
-  Future<void> fetchNextPage() async {
-    if (state.status == ExerciseHistoryStatus.loadingMore ||
-        !state.hasMore ||
-        state.status == ExerciseHistoryStatus.loading) return;
+  Future<void> fetchNextPage(String exerciseId) async {
+    final currentMap = Map<String, ExerciseHistoryState>.from(state);
+    final currentState = currentMap[exerciseId] ?? ExerciseHistoryState.initial();
 
-    state = state.copyWith(status: ExerciseHistoryStatus.loadingMore);
+    if (currentState.status == ExerciseHistoryStatus.loadingMore ||
+        !currentState.hasMore ||
+        currentState.status == ExerciseHistoryStatus.loading) return;
+
+    currentMap[exerciseId] = currentState.copyWith(status: ExerciseHistoryStatus.loadingMore);
+    state = currentMap;
+
     try {
       final service = ref.read(workoutServiceProvider);
       final result = await service.fetchExerciseHistory(
-        exerciseId: _exerciseId,
+        exerciseId: exerciseId,
         limit: _limit,
-        offset: state.offset,
+        offset: currentState.offset,
       );
-      state = state.copyWith(
-        sessions: [...state.sessions, ...result.history],
+
+      final updatedMap = Map<String, ExerciseHistoryState>.from(state);
+      updatedMap[exerciseId] = currentState.copyWith(
+        sessions: [...currentState.sessions, ...result.history],
         status: ExerciseHistoryStatus.success,
         hasMore: result.history.length >= _limit,
-        offset: state.offset + result.history.length,
+        offset: currentState.offset + result.history.length,
       );
+      state = updatedMap;
     } catch (e) {
-      state = state.copyWith(
+      final updatedMap = Map<String, ExerciseHistoryState>.from(state);
+      updatedMap[exerciseId] = (updatedMap[exerciseId] ?? ExerciseHistoryState.initial()).copyWith(
         status: ExerciseHistoryStatus.error,
         error: e.toString().replaceAll('Exception: ', ''),
       );
+      state = updatedMap;
     }
   }
 }

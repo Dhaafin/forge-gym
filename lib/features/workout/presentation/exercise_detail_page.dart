@@ -25,6 +25,11 @@ class _ExerciseDetailPageState extends ConsumerState<ExerciseDetailPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    Future.microtask(() {
+      ref
+          .read(exerciseHistoryControllerProvider.notifier)
+          .fetchFirstPage(widget.exercise.id);
+    });
   }
 
   @override
@@ -37,8 +42,8 @@ class _ExerciseDetailPageState extends ConsumerState<ExerciseDetailPage> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 250) {
       ref
-          .read(exerciseHistoryControllerProvider(widget.exercise.id).notifier)
-          .fetchNextPage();
+          .read(exerciseHistoryControllerProvider.notifier)
+          .fetchNextPage(widget.exercise.id);
     }
   }
 
@@ -58,8 +63,8 @@ class _ExerciseDetailPageState extends ConsumerState<ExerciseDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final state =
-        ref.watch(exerciseHistoryControllerProvider(widget.exercise.id));
+    final stateMap = ref.watch(exerciseHistoryControllerProvider);
+    final state = stateMap[widget.exercise.id] ?? ExerciseHistoryState.initial();
     final isLoading = state.status == ExerciseHistoryStatus.loading;
 
     return Scaffold(
@@ -564,8 +569,8 @@ class _MiniLinePainter extends CustomPainter {
     // Reversed so oldest→newest left→right
     final reversed = sessions.reversed.toList();
     final values = reversed.map((s) => s.sessionEstimated1rm).toList();
-    final minVal = values.reduce(math.min);
-    final maxVal = values.reduce(math.max);
+    final minVal = values.reduce((a, b) => math.min(a, b));
+    final maxVal = values.reduce((a, b) => math.max(a, b));
     final range = (maxVal - minVal).clamp(1.0, double.infinity);
 
     final points = <Offset>[];
