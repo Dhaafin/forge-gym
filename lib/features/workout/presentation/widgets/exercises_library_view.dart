@@ -7,6 +7,7 @@ import '../../../../core/widgets/forge_search_bar.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
 import '../../controllers/exercise_controller.dart';
 import '../../models/exercise_model.dart';
+import '../exercise_detail_page.dart';
 import 'exercise_form_sheet.dart';
 
 class ExercisesLibraryView extends ConsumerStatefulWidget {
@@ -307,7 +308,14 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
       imagePath = 'assets/images/muscles/cardio.png';
     }
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ExerciseDetailPage(exercise: exercise),
+        ),
+      ),
+      child: Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -422,8 +430,9 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSkeletonCard() {
     return Container(

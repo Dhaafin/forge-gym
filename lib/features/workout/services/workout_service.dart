@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/authenticated_http_client.dart';
 import '../models/exercise_model.dart';
+import '../models/exercise_history_model.dart';
 import '../models/workout_session_model.dart';
 import '../models/ai_coach_analysis_model.dart';
 
@@ -346,6 +347,37 @@ class WorkoutService {
       if (e.toString().contains('TimeoutException')) {
         throw Exception('Koneksi timeout. Silakan coba lagi.');
       }
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<ExerciseHistory> fetchExerciseHistory({
+    required String exerciseId,
+    int limit = 15,
+    int offset = 0,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConstants.baseUrl}/api/v1/workouts/exercises/$exerciseId/history',
+      ).replace(queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      });
+
+      final response = await _client.get(uri);
+
+      if (response.statusCode == 200) {
+        return ExerciseHistory.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      } else if (response.statusCode == 404) {
+        throw Exception('Exercise not found.');
+      } else {
+        throw Exception('Failed to load exercise history. Code: ${response.statusCode}');
+      }
+    } on UnauthorizedException {
+      rethrow;
+    } catch (e) {
       throw Exception(e.toString());
     }
   }
