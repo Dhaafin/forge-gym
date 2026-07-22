@@ -579,7 +579,10 @@ class _ExerciseProgressionSectionState
           const SizedBox(height: 16),
 
           // Chart
-          if (state.progressionStatus == AnalyticsStatus.loading)
+          if (state.selectedExercise == null)
+            const _EmptyChart(
+                message: 'Select an exercise to view progression.')
+          else if (state.progressionStatus == AnalyticsStatus.loading)
             const ForgeSkeleton(
               height: 200,
               width: double.infinity,

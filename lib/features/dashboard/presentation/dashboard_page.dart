@@ -517,6 +517,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index != _currentIndex) {
+            // Reset exercise selection in analytics when moving away from the analytics tab
+            if (_currentIndex == 2) {
+              ref.read(analyticsControllerProvider.notifier).clearSelection();
+            }
+
             if (index == 0) {
               ref.read(workoutHistoryControllerProvider.notifier).fetchFirstPage();
             } else if (index == 1) {

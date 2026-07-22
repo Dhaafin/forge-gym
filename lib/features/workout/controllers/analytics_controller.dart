@@ -153,19 +153,15 @@ class AnalyticsController extends Notifier<AnalyticsState> {
       final overview = results[0] as AnalyticsOverview;
       final exercises = results[1] as List<ExerciseModel>;
 
-      // Auto-select first exercise if none selected
-      final selectedExercise = state.selectedExercise ?? (exercises.isNotEmpty ? exercises.first : null);
-
       state = state.copyWith(
         overviewStatus: AnalyticsStatus.success,
         overview: overview,
         exercises: exercises,
-        selectedExercise: selectedExercise,
       );
 
-      // Fetch progression for selected exercise
-      if (selectedExercise != null) {
-        _fetchProgression(selectedExercise.id);
+      // Fetch progression for selected exercise if there is one
+      if (state.selectedExercise != null) {
+        _fetchProgression(state.selectedExercise!.id);
       } else {
         state = state.copyWith(
           progressionStatus: AnalyticsStatus.success,
@@ -178,6 +174,14 @@ class AnalyticsController extends Notifier<AnalyticsState> {
         overviewError: e.toString().replaceAll('Exception: ', ''),
       );
     }
+  }
+
+  void clearSelection() {
+    state = state.copyWith(
+      clearSelectedExercise: true,
+      clearProgression: true,
+      progressionStatus: AnalyticsStatus.success,
+    );
   }
 
   Future<void> setRange(AnalyticsRange range) async {
