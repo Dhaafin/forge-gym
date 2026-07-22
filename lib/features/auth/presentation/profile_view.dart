@@ -5,9 +5,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/flash_message.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
 import '../../../../core/widgets/forge_spinner.dart';
-import '../../../auth/controllers/auth_controller.dart';
-import '../../../auth/controllers/profile_controller.dart';
-import '../../../auth/models/user_profile_model.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/profile_controller.dart';
+import '../models/user_profile_model.dart';
 
 class ProfileView extends ConsumerStatefulWidget {
   final bool isActive;
