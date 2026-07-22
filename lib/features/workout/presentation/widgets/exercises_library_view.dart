@@ -289,73 +289,138 @@ class _ExercisesLibraryViewState extends ConsumerState<ExercisesLibraryView> {
   }
 
   Widget _buildExerciseCard(ExerciseModel exercise) {
+    final muscle = exercise.targetMuscle.toLowerCase();
+    String imagePath = 'assets/images/gym_silhouette.png'; // fallback
+    if (muscle.contains('chest')) {
+      imagePath = 'assets/images/muscles/chest.png';
+    } else if (muscle.contains('back')) {
+      imagePath = 'assets/images/muscles/back.png';
+    } else if (muscle.contains('leg')) {
+      imagePath = 'assets/images/muscles/legs.png';
+    } else if (muscle.contains('shoulder')) {
+      imagePath = 'assets/images/muscles/shoulders.png';
+    } else if (muscle.contains('arm')) {
+      imagePath = 'assets/images/muscles/arms.png';
+    } else if (muscle.contains('core') || muscle.contains('abs')) {
+      imagePath = 'assets/images/muscles/core.png';
+    } else if (muscle.contains('cardio') || muscle.contains('running')) {
+      imagePath = 'assets/images/muscles/cardio.png';
+    }
+
     return Container(
-      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.03),
+          color: Colors.white.withValues(alpha: 0.05),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  exercise.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            // 1. Background Image
+            Positioned.fill(
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+              ),
+            ),
+            // 2. Dark Gradient Overlay to ensure readability
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: 0.15),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showCardActions(context, exercise),
-                child: const Icon(
-                  Icons.more_vert_rounded,
-                  color: AppTheme.textSecondary,
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.2),
+            ),
+            // 3. Card Content
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          exercise.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black54,
+                                offset: Offset(0, 1),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => _showCardActions(context, exercise),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.more_vert_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      exercise.targetMuscle.toUpperCase(),
+                      style: const TextStyle(
+                        color: AppTheme.primary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Text(
-              exercise.targetMuscle.toUpperCase(),
-              style: const TextStyle(
-                color: AppTheme.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
