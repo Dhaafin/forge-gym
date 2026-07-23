@@ -10,6 +10,7 @@ import '../../../core/widgets/forge_api_bottom_sheet.dart';
 import '../controllers/live_session_controller.dart';
 import '../controllers/exercise_controller.dart';
 import '../models/workout_session_model.dart';
+import '../models/draft_session_model.dart';
 import '../models/exercise_model.dart';
 import '../services/workout_service.dart';
 import 'widgets/add_exercise_sheet.dart';
@@ -42,34 +43,6 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
   void dispose() {
     _titleController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectDate(BuildContext context, DateTime currentStart) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: currentStart,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      final newStart = DateTime(picked.year, picked.month, picked.day, currentStart.hour, currentStart.minute);
-      ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(startTime: newStart);
-    }
-  }
-
-  Future<void> _selectTime(BuildContext context, DateTime current, bool isStart) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(current),
-    );
-    if (picked != null) {
-      final newTime = DateTime(current.year, current.month, current.day, picked.hour, picked.minute);
-      if (isStart) {
-        ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(startTime: newTime);
-      } else {
-        ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(endTime: newTime);
-      }
-    }
   }
 
   void _saveSession() async {
@@ -233,147 +206,168 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                 ),
                 const SizedBox(height: 12),
                 
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPickerField(
-                        label: 'Date',
-                        value: DateFormat('dd MMM yyyy').format(draft.startTime),
-                        icon: Icons.calendar_today_rounded,
-                        onTap: () => _selectDate(context, draft.startTime),
-                      ),
+                // Beautiful Inline DateTime card
+                GestureDetector(
+                  onTap: () => _showDateTimeBottomSheet(context, draft),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildPickerField(
-                        label: 'Duration',
-                        value: '$calculatedDuration min',
-                        icon: Icons.timer_rounded,
-                        onTap: () {
-                          // Could show a dialog to manually override duration, leaving as auto-calc for simplicity based on start/end
-                        },
-                      ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.date_range_rounded, color: AppTheme.primary),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('WORKOUT SCHEDULE', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('EEEE, dd MMM yyyy').format(draft.startTime),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${DateFormat('HH:mm').format(draft.startTime)} - ${draft.endTime != null ? DateFormat('HH:mm').format(draft.endTime!) : '--:--'} ($calculatedDuration mins)',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.edit_calendar_rounded, color: AppTheme.primary, size: 20),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildPickerField(
-                        label: 'Start Time',
-                        value: DateFormat('HH:mm').format(draft.startTime),
-                        icon: Icons.access_time_rounded,
-                        onTap: () => _selectTime(context, draft.startTime, true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildPickerField(
-                        label: 'End Time',
-                        value: draft.endTime != null ? DateFormat('HH:mm').format(draft.endTime!) : '--:--',
-                        icon: Icons.access_time_rounded,
-                        onTap: () => _selectTime(context, draft.endTime ?? draft.startTime.add(const Duration(hours: 1)), false),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 
                 const Text('EXERCISES', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                 const SizedBox(height: 16),
                 
-                ...groupedSets.entries.map((entry) {
-                  final exerciseSets = entry.value;
-                  final exerciseName = exerciseSets.first.exerciseName;
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            exerciseName.toUpperCase(),
-                            style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-                          ),
-                          Row(
-                            children: [
-                              TextButton.icon(
-                                onPressed: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (context) => AddSetSheet(
-                                      exercise: ExerciseModel(id: entry.key, name: exerciseName, targetMuscle: ''),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.add_rounded, size: 16),
-                                label: const Text('Set'),
-                                style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
-                              ),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
-                                onSelected: (value) async {
-                                  if (value == 'swap') {
-                                    final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                ReorderableListView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  onReorder: (oldIndex, newIndex) {
+                    ref.read(liveSessionControllerProvider.notifier).reorderExercises(oldIndex, newIndex);
+                  },
+                  children: groupedSets.entries.toList().asMap().entries.map((item) {
+                    final index = item.key;
+                    final entry = item.value;
+                    final exerciseSets = entry.value;
+                    final exerciseName = exerciseSets.first.exerciseName;
+                    
+                    return Column(
+                      key: ValueKey(entry.key),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(right: 8.0),
+                                    child: Icon(Icons.drag_handle_rounded, color: AppTheme.textSecondary),
+                                  ),
+                                ),
+                                Text(
+                                  exerciseName.toUpperCase(),
+                                  style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () {
+                                    showModalBottomSheet(
                                       context: context,
-                                      title: 'Swap Exercise',
-                                      subtitle: 'Choose a replacement for $exerciseName',
-                                      selectedValue: null,
-                                      fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
-                                            search: query,
-                                            offset: offset,
-                                            limit: 10,
-                                          ),
-                                      labelBuilder: (e) => e.name,
-                                      idBuilder: (e) => e.id,
-                                      iconBuilder: (e) => Icons.fitness_center_rounded,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (context) => AddSetSheet(
+                                        exercise: ExerciseModel(id: entry.key, name: exerciseName, targetMuscle: ''),
+                                      ),
                                     );
-                                    if (selected != null && context.mounted) {
-                                      ref.read(liveSessionControllerProvider.notifier).replaceExercise(
-                                        oldExerciseId: entry.key,
-                                        newExercise: selected,
+                                  },
+                                  icon: const Icon(Icons.add_rounded, size: 16),
+                                  label: const Text('Set'),
+                                  style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+                                ),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
+                                  onSelected: (value) async {
+                                    if (value == 'swap') {
+                                      final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                                        context: context,
+                                        title: 'Swap Exercise',
+                                        subtitle: 'Choose a replacement for $exerciseName',
+                                        selectedValue: null,
+                                        fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
+                                              search: query,
+                                              offset: offset,
+                                              limit: 10,
+                                            ),
+                                        labelBuilder: (e) => e.name,
+                                        idBuilder: (e) => e.id,
+                                        iconBuilder: (e) => Icons.fitness_center_rounded,
                                       );
+                                      if (selected != null && context.mounted) {
+                                        ref.read(liveSessionControllerProvider.notifier).replaceExercise(
+                                          oldExerciseId: entry.key,
+                                          newExercise: selected,
+                                        );
+                                      }
+                                    } else if (value == 'delete') {
+                                      ref.read(liveSessionControllerProvider.notifier).deleteExercise(entry.key);
                                     }
-                                  } else if (value == 'delete') {
-                                    ref.read(liveSessionControllerProvider.notifier).deleteExercise(entry.key);
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'swap',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.swap_horiz_rounded, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Swap Exercise'),
-                                      ],
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'swap',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.swap_horiz_rounded, size: 18),
+                                          SizedBox(width: 8),
+                                          Text('Swap Exercise'),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
-                                      ],
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
+                                          SizedBox(width: 8),
+                                          Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      ...exerciseSets.map((set) => _buildSetRow(set)),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                }),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        ...exerciseSets.map((set) => _buildSetRow(set)),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  }).toList(),
+                ),
                 
                 // Add Exercise Button
                 Padding(
@@ -419,12 +413,12 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                 ),
                 child: state.isLoading 
                   ? const CircularProgressIndicator(color: Colors.black)
-                  : Row(
+                  : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.save_rounded),
-                        const SizedBox(width: 8),
-                        const Text('SAVE SESSION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
+                        Icon(Icons.save_rounded),
+                        SizedBox(width: 8),
+                        Text('SAVE SESSION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.2)),
                       ],
                     ),
               ),
@@ -435,30 +429,288 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
     );
   }
 
-  Widget _buildPickerField({required String label, required String value, required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(icon, size: 16, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
+  void _showDateTimeBottomSheet(BuildContext context, DraftSessionModel draft) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final state = ref.watch(liveSessionControllerProvider);
+            final currentDraft = state.draft!;
+            final duration = currentDraft.endTime != null
+                ? currentDraft.endTime!.difference(currentDraft.startTime).inMinutes
+                : 0;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 24),
+                          SizedBox(width: 8),
+                          Text(
+                            'Workout Schedule',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white54),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Date Picker Card
+                  InkWell(
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: currentDraft.startTime,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.dark(
+                                primary: AppTheme.primary,
+                                onPrimary: Colors.black,
+                                surface: AppTheme.surface,
+                                onSurface: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        final newStart = DateTime(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                          currentDraft.startTime.hour,
+                          currentDraft.startTime.minute,
+                        );
+                        final newEnd = currentDraft.endTime != null
+                            ? DateTime(
+                                picked.year,
+                                picked.month,
+                                picked.day,
+                                currentDraft.endTime!.hour,
+                                currentDraft.endTime!.minute,
+                              )
+                            : null;
+                        ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(
+                              startTime: newStart,
+                              endTime: newEnd,
+                            );
+                        setModalState(() {});
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, color: AppTheme.primary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('DATE', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('EEEE, dd MMM yyyy').format(currentDraft.startTime),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Start and End Time Rows
+                  Row(
+                    children: [
+                      // Start Time Card
+                      Expanded(
+                        child: InkWell(
+                          onTap: () async {
+                            final TimeOfDay? picked = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.fromDateTime(currentDraft.startTime),
+                            );
+                            if (picked != null) {
+                              final newStart = DateTime(
+                                currentDraft.startTime.year,
+                                currentDraft.startTime.month,
+                                currentDraft.startTime.day,
+                                picked.hour,
+                                picked.minute,
+                              );
+                              ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(startTime: newStart);
+                              setModalState(() {});
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('START TIME', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.play_circle_outline_rounded, color: Colors.green, size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      DateFormat('HH:mm').format(currentDraft.startTime),
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      
+                      // End Time Card
+                      Expanded(
+                        child: InkWell(
+                          onTap: () async {
+                            final initialEnd = currentDraft.endTime ?? currentDraft.startTime.add(const Duration(hours: 1));
+                            final TimeOfDay? picked = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.fromDateTime(initialEnd),
+                            );
+                            if (picked != null) {
+                              final newEnd = DateTime(
+                                currentDraft.startTime.year,
+                                currentDraft.startTime.month,
+                                currentDraft.startTime.day,
+                                picked.hour,
+                                picked.minute,
+                              );
+                              ref.read(liveSessionControllerProvider.notifier).updatePastSessionTimes(endTime: newEnd);
+                              setModalState(() {});
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('END TIME', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.stop_circle_outlined, color: AppTheme.error, size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      currentDraft.endTime != null
+                                          ? DateFormat('HH:mm').format(currentDraft.endTime!)
+                                          : '--:--',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Calculated Duration Box
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.timer_rounded, color: AppTheme.primary, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Calculated Duration',
+                              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '$duration mins',
+                          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('CONFIRM', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

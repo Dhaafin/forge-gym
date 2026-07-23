@@ -170,7 +170,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       return set;
     }).toList();
     state = state.copyWith(
-      draft: state.draft!.copyWith(sets: updatedSets),
+      draft: state.draft!.copyWith(sets: _reindexSets(updatedSets)),
     );
     _saveDraftToLocal();
   }
@@ -180,6 +180,34 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     final updatedSets = state.draft!.sets.where((set) => set.exerciseId != exerciseId).toList();
     state = state.copyWith(
       draft: state.draft!.copyWith(sets: _reindexSets(updatedSets)),
+    );
+    _saveDraftToLocal();
+  }
+
+  void reorderExercises(int oldIndex, int newIndex) {
+    if (state.draft == null) return;
+    
+    final draft = state.draft!;
+    final orderedIds = <String>[];
+    for (var set in draft.sets) {
+      if (!orderedIds.contains(set.exerciseId)) {
+        orderedIds.add(set.exerciseId);
+      }
+    }
+    
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final exerciseId = orderedIds.removeAt(oldIndex);
+    orderedIds.insert(newIndex, exerciseId);
+    
+    final List<WorkoutSetModel> newSets = [];
+    for (final id in orderedIds) {
+      newSets.addAll(draft.sets.where((s) => s.exerciseId == id));
+    }
+    
+    state = state.copyWith(
+      draft: draft.copyWith(sets: _reindexSets(newSets)),
     );
     _saveDraftToLocal();
   }

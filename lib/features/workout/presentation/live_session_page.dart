@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/flash_message.dart';
+import '../../../core/widgets/forge_api_bottom_sheet.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
+import '../services/workout_service.dart';
 import 'widgets/add_exercise_sheet.dart';
 import 'widgets/add_set_sheet.dart';
 
@@ -147,50 +149,127 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  ...groupedSets.entries.map((entry) {
-                    final exerciseSets = entry.value;
-                    final exerciseName = exerciseSets.first.exerciseName;
+                  ReorderableListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    onReorder: (oldIndex, newIndex) {
+                      ref.read(liveSessionControllerProvider.notifier).reorderExercises(oldIndex, newIndex);
+                    },
+                    children: groupedSets.entries.toList().asMap().entries.map((item) {
+                      final index = item.key;
+                      final entry = item.value;
+                      final exerciseSets = entry.value;
+                      final exerciseName = exerciseSets.first.exerciseName;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              exerciseName.toUpperCase(),
-                              style: const TextStyle(
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2),
-                            ),
-                            TextButton.icon(
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (context) => AddSetSheet(
-                                    exercise: ExerciseModel(
-                                      id: entry.key,
-                                      name: exerciseName,
-                                      targetMuscle: '',
+                      return Column(
+                        key: ValueKey(entry.key),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(right: 8.0),
+                                      child: Icon(Icons.drag_handle_rounded, color: AppTheme.textSecondary),
                                     ),
                                   ),
-                                );
-                              },
-                              icon: const Icon(Icons.add_rounded, size: 16),
-                              label: const Text('Set'),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: AppTheme.primary),
-                            ),
-                          ],
-                        ),
-                        ...exerciseSets.map((set) => _buildSetRow(set)),
-                        const SizedBox(height: 24),
-                      ],
-                    );
-                  }),
+                                  Text(
+                                    exerciseName.toUpperCase(),
+                                    style: const TextStyle(
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (context) => AddSetSheet(
+                                          exercise: ExerciseModel(
+                                            id: entry.key,
+                                            name: exerciseName,
+                                            targetMuscle: '',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.add_rounded, size: 16),
+                                    label: const Text('Set'),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: AppTheme.primary),
+                                  ),
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
+                                    onSelected: (value) async {
+                                      if (value == 'swap') {
+                                        final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                                          context: context,
+                                          title: 'Swap Exercise',
+                                          subtitle: 'Choose a replacement for $exerciseName',
+                                          selectedValue: null,
+                                          fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
+                                                search: query,
+                                                offset: offset,
+                                                limit: 10,
+                                              ),
+                                          labelBuilder: (e) => e.name,
+                                          idBuilder: (e) => e.id,
+                                          iconBuilder: (e) => Icons.fitness_center_rounded,
+                                        );
+                                        if (selected != null && context.mounted) {
+                                          ref.read(liveSessionControllerProvider.notifier).replaceExercise(
+                                            oldExerciseId: entry.key,
+                                            newExercise: selected,
+                                          );
+                                        }
+                                      } else if (value == 'delete') {
+                                        ref.read(liveSessionControllerProvider.notifier).deleteExercise(entry.key);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'swap',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.swap_horiz_rounded, size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Swap Exercise'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          ...exerciseSets.map((set) => _buildSetRow(set)),
+                          const SizedBox(height: 24),
+                        ],
+                      );
+                    }).toList(),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: OutlinedButton.icon(
