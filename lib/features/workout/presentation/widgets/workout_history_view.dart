@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/flash_message.dart';
 import '../../../../core/widgets/forge_search_bar.dart';
 import '../../../../core/widgets/forge_skeleton.dart';
 import '../../controllers/workout_history_controller.dart';
@@ -383,7 +382,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                 imagePath,
                 fit: BoxFit.cover,
                 alignment: Alignment.centerRight,
-                errorBuilder: (_, __, ___) => Image.asset(
+                errorBuilder: (context, error, stackTrace) => Image.asset(
                   'assets/images/gym_silhouette.png',
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
@@ -487,7 +486,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                                         ),
                                         const SizedBox(width: 3),
                                         Text(
-                                          '$prCount PR${prCount > 1 ? \'s\' : \'\'}',
+                                          "$prCount PR${prCount > 1 ? 's' : ''}",
                                           style: const TextStyle(
                                             color: Color(0xFFFFD700),
                                             fontSize: 9,
