@@ -26,8 +26,8 @@ class DraftSessionModel {
     return DraftSessionModel(
       id: json['id'] as String,
       title: json['title'] as String,
-      startTime: DateTime.parse(json['start_time'] as String),
-      endTime: json['end_time'] != null ? DateTime.parse(json['end_time'] as String) : null,
+      startTime: DateTime.parse(json['start_time'] as String).toLocal(),
+      endTime: json['end_time'] != null ? DateTime.parse(json['end_time'] as String).toLocal() : null,
       durationMinutes: json['duration_minutes'] as int?,
       sets: typedSets,
       isLive: json['is_live'] as bool? ?? true,

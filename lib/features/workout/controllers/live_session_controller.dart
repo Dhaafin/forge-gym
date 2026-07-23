@@ -154,7 +154,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
       final title = result['title'] as String? ?? 'Past Workout Session';
       final dateStr = result['date'] as String?;
-      final parsedDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
+      final parsedDate = dateStr != null ? DateTime.tryParse(dateStr)?.toLocal() : null;
       final startTime = parsedDate ?? DateTime.now().subtract(const Duration(hours: 1));
 
       final rawExercises = result['exercises'] as List<dynamic>? ?? [];
@@ -229,7 +229,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
 
     final title = result['title'] as String? ?? 'Past Workout Session';
     final dateStr = result['date'] as String?;
-    final parsedDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
+    final parsedDate = dateStr != null ? DateTime.tryParse(dateStr)?.toLocal() : null;
     final startTime = parsedDate ?? DateTime.now().subtract(const Duration(hours: 1));
 
     final rawExercises = result['exercises'] as List<dynamic>? ?? [];

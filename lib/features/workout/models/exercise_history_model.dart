@@ -51,7 +51,7 @@ class ExerciseHistorySession {
     return ExerciseHistorySession(
       sessionId: json['session_id'] as String,
       sessionTitle: json['session_title'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.parse(json['date'] as String).toLocal(),
       sets: rawSets
           .map((e) => ExerciseHistorySet.fromJson(e as Map<String, dynamic>))
           .toList(),

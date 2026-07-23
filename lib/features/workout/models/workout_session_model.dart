@@ -107,7 +107,7 @@ class WorkoutSessionModel {
     );
   }
 
-  DateTime get startDateTime => DateTime.tryParse(startTime) ?? DateTime.now();
+  DateTime get startDateTime => DateTime.tryParse(startTime)?.toLocal() ?? DateTime.now();
 
   WorkoutSessionModel copyWith({
     String? id,

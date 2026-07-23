@@ -8,7 +8,7 @@ class VolumeHistoryPoint {
 
   factory VolumeHistoryPoint.fromJson(Map<String, dynamic> json) {
     return VolumeHistoryPoint(
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.parse(json['date'] as String).toLocal(),
       volume: (json['volume'] as num).toDouble(),
     );
   }
@@ -68,7 +68,7 @@ class ExerciseProgressionPoint {
 
   factory ExerciseProgressionPoint.fromJson(Map<String, dynamic> json) {
     return ExerciseProgressionPoint(
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.parse(json['date'] as String).toLocal(),
       maxWeight: (json['max_weight'] as num).toDouble(),
       estimated1rm: (json['estimated_1rm'] as num).toDouble(),
     );
