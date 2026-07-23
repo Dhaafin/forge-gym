@@ -347,7 +347,6 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
     final prCount = session.prCount;
     final totalVol = session.totalVolume;
     final muscleColor = session.dominantMuscleColor;
-    final muscleIcon = session.dominantMuscleIcon;
     final imagePath = session.dominantMuscleImagePath;
     final exercises = session.uniqueExerciseNames;
 
@@ -372,36 +371,40 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            // 1. Right-Aligned Background Image
+            // 1. Right-Aligned Background Image (Full Cover)
             Positioned(
               right: 0,
               top: 0,
               bottom: 0,
-              width: 150,
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                errorBuilder: (context, error, stackTrace) => Image.asset(
-                  'assets/images/gym_silhouette.png',
+              width: 180, // Displayed in the right portion
+              child: Opacity(
+                opacity: 0.40, // Warna asli berenergi namun tidak mendominasi
+                child: Image.asset(
+                  imagePath,
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/images/gym_silhouette.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                  ),
                 ),
               ),
             ),
             // 2. Faded Gradient Mask (Solid surface color on left, fading to transparent on right)
             Positioned.fill(
-              child: Container(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       AppTheme.surface,
-                      AppTheme.surface.withValues(alpha: 0.95),
-                      AppTheme.surface.withValues(alpha: 0.65),
-                      AppTheme.surface.withValues(alpha: 0.10),
+                      AppTheme.surface,
+                      AppTheme.surface.withValues(alpha: 0.70),
+                      AppTheme.surface.withValues(alpha: 0.15),
                     ],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
+                    stops: const [0.0, 0.45, 0.75, 1.0], // Kiri 45% solid gelap untuk kontras teks sempurna
                   ),
                 ),
               ),
@@ -423,28 +426,9 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                 splashColor: muscleColor.withValues(alpha: 0.08),
                 highlightColor: muscleColor.withValues(alpha: 0.04),
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   child: Row(
                     children: [
-                      // Leading Dynamic Icon Badge
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: muscleColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: muscleColor.withValues(alpha: 0.35),
-                            width: 1,
-                          ),
-                        ),
-                        child: Icon(
-                          muscleIcon,
-                          color: muscleColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,8 +441,8 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                                     session.title,
                                     style: const TextStyle(
                                       color: AppTheme.textPrimary,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -506,14 +490,14 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                                 exercises.join(' • '),
                                 style: const TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
                             ] else ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
                             ],
                             // Chips Row
                             Wrap(
@@ -531,7 +515,7 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Icon(
                         Icons.chevron_right_rounded,
                         color: muscleColor,
@@ -779,16 +763,5 @@ extension _WorkoutSessionModelExtension on WorkoutSessionModel {
     if (m.contains('core')) return const Color(0xFF00FF66); // Neon Green
     if (m.contains('cardio')) return const Color(0xFFFF5E00); // Neon Orange
     return AppTheme.primary;
-  }
-
-  IconData get dominantMuscleIcon {
-    final m = dominantMuscleGroup.toLowerCase();
-    if (m.contains('chest') || m.contains('arm')) return Icons.fitness_center_rounded;
-    if (m.contains('back')) return Icons.keyboard_double_arrow_up_rounded;
-    if (m.contains('leg')) return Icons.sports_gymnastics_rounded;
-    if (m.contains('shoulder')) return Icons.upgrade_rounded;
-    if (m.contains('core')) return Icons.center_focus_strong_rounded;
-    if (m.contains('cardio')) return Icons.directions_run_rounded;
-    return Icons.bolt_rounded;
   }
 }
