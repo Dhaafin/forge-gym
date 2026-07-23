@@ -82,6 +82,7 @@ class AppTheme {
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: background,
+        scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: GoogleFonts.inter(
