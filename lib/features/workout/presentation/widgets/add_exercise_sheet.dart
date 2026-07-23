@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/forge_search_bar.dart';
 import '../../controllers/exercise_controller.dart';
+import '../../controllers/live_session_controller.dart';
 import '../../models/exercise_model.dart';
 import 'add_set_sheet.dart';
 import 'exercise_form_sheet.dart';
 
 class AddExerciseSheet extends ConsumerStatefulWidget {
-  const AddExerciseSheet({super.key});
+  final String? oldExerciseId;
+  const AddExerciseSheet({super.key, this.oldExerciseId});
 
   @override
   ConsumerState<AddExerciseSheet> createState() => _AddExerciseSheetState();
@@ -37,13 +39,20 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
 
   void _onExerciseSelected(ExerciseModel exercise) {
     Navigator.pop(context); // close exercise sheet
-    // immediately show add set sheet
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddSetSheet(exercise: exercise),
-    );
+    if (widget.oldExerciseId != null) {
+      ref.read(liveSessionControllerProvider.notifier).replaceExercise(
+        oldExerciseId: widget.oldExerciseId!,
+        newExercise: exercise,
+      );
+    } else {
+      // immediately show add set sheet
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => AddSetSheet(exercise: exercise),
+      );
+    }
   }
 
   Widget _buildSkeletonItem() {
@@ -122,9 +131,9 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Add Exercise',
-            style: TextStyle(
+          Text(
+            widget.oldExerciseId != null ? 'Swap Exercise' : 'Add Exercise',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -326,8 +335,10 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                             exercise.targetMuscle,
                             style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                           ),
-                          trailing: const Icon(
-                            Icons.add_circle_outline_rounded,
+                           trailing: Icon(
+                            widget.oldExerciseId != null
+                                ? Icons.swap_horiz_rounded
+                                : Icons.add_circle_outline_rounded,
                             color: AppTheme.primary,
                           ),
                           onTap: () => _onExerciseSelected(exercise),

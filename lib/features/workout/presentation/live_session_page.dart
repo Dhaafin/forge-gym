@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/flash_message.dart';
-import '../../../core/widgets/forge_api_bottom_sheet.dart';
 import '../controllers/live_session_controller.dart';
 import '../models/workout_session_model.dart';
 import '../models/exercise_model.dart';
-import '../services/workout_service.dart';
 import 'widgets/add_exercise_sheet.dart';
 import 'widgets/add_set_sheet.dart';
 
@@ -213,26 +211,14 @@ class _LiveSessionPageState extends ConsumerState<LiveSessionPage> {
                                     icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
                                     onSelected: (value) async {
                                       if (value == 'swap') {
-                                        final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                                        showModalBottomSheet(
                                           context: context,
-                                          title: 'Swap Exercise',
-                                          subtitle: 'Choose a replacement for $exerciseName',
-                                          selectedValue: null,
-                                          fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
-                                                search: query,
-                                                offset: offset,
-                                                limit: 10,
-                                              ),
-                                          labelBuilder: (e) => e.name,
-                                          idBuilder: (e) => e.id,
-                                          iconBuilder: (e) => Icons.fitness_center_rounded,
-                                        );
-                                        if (selected != null && context.mounted) {
-                                          ref.read(liveSessionControllerProvider.notifier).replaceExercise(
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => AddExerciseSheet(
                                             oldExerciseId: entry.key,
-                                            newExercise: selected,
-                                          );
-                                        }
+                                          ),
+                                        );
                                       } else if (value == 'delete') {
                                         ref.read(liveSessionControllerProvider.notifier).deleteExercise(entry.key);
                                       }
