@@ -1,6 +1,6 @@
 class WorkoutSetModel {
   final String id;
-  final String sessionId;
+  final String? sessionId;
   final String exerciseId;
   final String exerciseName;
   final int setNumber;
@@ -8,10 +8,11 @@ class WorkoutSetModel {
   final int reps;
   final String setType; // e.g. normal, warmup, dropset
   final bool isPr;
+  final int sequenceOrder;
 
   WorkoutSetModel({
     required this.id,
-    required this.sessionId,
+    this.sessionId,
     required this.exerciseId,
     required this.exerciseName,
     required this.setNumber,
@@ -19,12 +20,13 @@ class WorkoutSetModel {
     required this.reps,
     required this.setType,
     required this.isPr,
+    required this.sequenceOrder,
   });
 
   factory WorkoutSetModel.fromJson(Map<String, dynamic> json) {
     return WorkoutSetModel(
-      id: json['id'] as String,
-      sessionId: json['session_id'] as String,
+      id: json['id'] as String? ?? '',
+      sessionId: json['session_id'] as String?,
       exerciseId: json['exercise_id'] as String,
       exerciseName: json['exercise_name'] as String? ?? '',
       setNumber: json['set_number'] as int? ?? 1,
@@ -32,21 +34,26 @@ class WorkoutSetModel {
       reps: json['reps'] as int? ?? 0,
       setType: json['set_type'] as String? ?? 'normal',
       isPr: json['is_pr'] as bool? ?? false,
+      sequenceOrder: json['sequence_order'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'session_id': sessionId,
+    final data = <String, dynamic>{
       'exercise_id': exerciseId,
-      'exercise_name': exerciseName,
       'set_number': setNumber,
       'weight_kg': weightKg,
       'reps': reps,
       'set_type': setType,
-      'is_pr': isPr,
+      'sequence_order': sequenceOrder,
     };
+    if (id.isNotEmpty && !id.startsWith('temp_')) {
+      data['id'] = id;
+    }
+    if (sessionId != null) {
+      data['session_id'] = sessionId;
+    }
+    return data;
   }
 
   WorkoutSetModel copyWith({
@@ -59,6 +66,7 @@ class WorkoutSetModel {
     int? reps,
     String? setType,
     bool? isPr,
+    int? sequenceOrder,
   }) {
     return WorkoutSetModel(
       id: id ?? this.id,
@@ -70,6 +78,7 @@ class WorkoutSetModel {
       reps: reps ?? this.reps,
       setType: setType ?? this.setType,
       isPr: isPr ?? this.isPr,
+      sequenceOrder: sequenceOrder ?? this.sequenceOrder,
     );
   }
 }

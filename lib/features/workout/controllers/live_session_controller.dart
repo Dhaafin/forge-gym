@@ -152,7 +152,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       endTime: session.endTime != null ? (DateTime.tryParse(session.endTime!)?.toLocal() ?? session.startDateTime.add(const Duration(hours: 1))) : session.startDateTime.add(const Duration(hours: 1)),
       durationMinutes: session.durationMinutes ?? 60,
       isLive: false,
-      sets: session.sets,
+      sets: _reindexSets(session.sets),
     );
     state = state.copyWith(draft: newDraft, elapsedTime: Duration.zero, clearError: true);
     _saveDraftToLocal();
@@ -179,7 +179,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (state.draft == null) return;
     final updatedSets = state.draft!.sets.where((set) => set.exerciseId != exerciseId).toList();
     state = state.copyWith(
-      draft: state.draft!.copyWith(sets: updatedSets),
+      draft: state.draft!.copyWith(sets: _reindexSets(updatedSets)),
     );
     _saveDraftToLocal();
   }
@@ -228,7 +228,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         for (final rawSet in rawSets) {
           final setJson = rawSet as Map<String, dynamic>;
           allSets.add(WorkoutSetModel(
-            id: _uuid.v4(),
+            id: 'temp_${_uuid.v4()}',
             sessionId: state.draft!.id,
             exerciseId: exerciseId,
             exerciseName: exerciseName,
@@ -237,6 +237,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
             reps: setJson['reps'] as int? ?? 0,
             setType: setJson['set_type'] as String? ?? 'normal',
             isPr: false,
+            sequenceOrder: allSets.length,
           ));
         }
       }
@@ -250,7 +251,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
           startTime: startTime,
           endTime: endTime,
           durationMinutes: 60,
-          sets: allSets,
+          sets: _reindexSets(allSets),
         ),
       );
       _saveDraftToLocal();
@@ -286,7 +287,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       for (final rawSet in rawSets) {
         final setJson = rawSet as Map<String, dynamic>;
         allSets.add(WorkoutSetModel(
-          id: _uuid.v4(),
+          id: 'temp_${_uuid.v4()}',
           sessionId: state.draft!.id,
           exerciseId: exerciseId,
           exerciseName: exerciseName,
@@ -295,6 +296,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
           reps: setJson['reps'] as int? ?? 0,
           setType: setJson['set_type'] as String? ?? 'normal',
           isPr: false,
+          sequenceOrder: allSets.length,
         ));
       }
     }
@@ -307,7 +309,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         startTime: startTime,
         endTime: endTime,
         durationMinutes: 60,
-        sets: allSets,
+        sets: _reindexSets(allSets),
       ),
     );
     _saveDraftToLocal();
@@ -326,7 +328,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     final nextSetNumber = exerciseSets.length + 1;
 
     final newSet = WorkoutSetModel(
-      id: _uuid.v4(),
+      id: 'temp_${_uuid.v4()}',
       sessionId: state.draft!.id,
       exerciseId: exercise.id,
       exerciseName: exercise.name,
@@ -335,11 +337,12 @@ class LiveSessionController extends Notifier<LiveSessionState> {
       reps: reps,
       setType: setType,
       isPr: false,
+      sequenceOrder: currentSets.length,
     );
 
     final updatedSets = List<WorkoutSetModel>.from(currentSets)..add(newSet);
     state = state.copyWith(
-      draft: state.draft!.copyWith(sets: updatedSets),
+      draft: state.draft!.copyWith(sets: _reindexSets(updatedSets)),
     );
     _saveDraftToLocal();
   }
@@ -348,9 +351,25 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     if (state.draft == null) return;
     final updatedSets = state.draft!.sets.where((s) => s.id != setId).toList();
     state = state.copyWith(
-      draft: state.draft!.copyWith(sets: updatedSets),
+      draft: state.draft!.copyWith(sets: _reindexSets(updatedSets)),
     );
     _saveDraftToLocal();
+  }
+
+  List<WorkoutSetModel> _reindexSets(List<WorkoutSetModel> sets) {
+    final Map<String, int> exerciseSetCounters = {};
+    return sets.asMap().entries.map((entry) {
+      final index = entry.key;
+      final set = entry.value;
+      
+      final currentCount = (exerciseSetCounters[set.exerciseId] ?? 0) + 1;
+      exerciseSetCounters[set.exerciseId] = currentCount;
+      
+      return set.copyWith(
+        setNumber: currentCount,
+        sequenceOrder: index,
+      );
+    }).toList();
   }
 
   /// Submits the workout session to the API.
@@ -373,14 +392,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
           ? endTime.difference(draft.startTime).inMinutes
           : (draft.durationMinutes ?? 0);
 
-      final setsJson = draft.sets.map((s) => {
-        if (isEditing) 'id': s.id,
-        'exercise_id': s.exerciseId,
-        'set_number': s.setNumber,
-        'weight_kg': s.weightKg,
-        'reps': s.reps,
-        'set_type': s.setType,
-      }).toList();
+      final setsJson = draft.sets.map((s) => s.toJson()).toList();
 
       debugPrint('[LiveSession] Sending ${setsJson.length} sets. isEditing = $isEditing');
 
