@@ -263,12 +263,49 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                         }
 
                         if (state.exercises.isEmpty) {
-                          return const Center(
+                          return Center(
                             child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 32.0),
-                              child: Text(
-                                'No exercises found.',
-                                style: TextStyle(color: AppTheme.textSecondary),
+                              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(18),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withValues(alpha: 0.05),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppTheme.primary.withValues(alpha: 0.15),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.search_off_rounded,
+                                      color: AppTheme.primary,
+                                      size: 32,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  const Text(
+                                    'No Exercises Found',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Try typing a different name, selecting another muscle filter, or create a brand new exercise above.',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12.5,
+                                      height: 1.4,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           );
