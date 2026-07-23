@@ -345,6 +345,12 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
     final date = _formatDate(session.startDateTime);
     final duration = _formatDuration(session.durationMinutes);
     final setCount = session.sets.length;
+    final prCount = session.prCount;
+    final totalVol = session.totalVolume;
+    final muscleColor = session.dominantMuscleColor;
+    final muscleIcon = session.dominantMuscleIcon;
+    final imagePath = session.dominantMuscleImagePath;
+    final exercises = session.uniqueExerciseNames;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -352,80 +358,192 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primary.withValues(alpha: 0.08),
+          color: Colors.white.withValues(alpha: 0.05),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Material(
-        color: Colors.transparent,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => WorkoutSessionDetailPage(sessionId: session.id),
+        child: Stack(
+          children: [
+            // 1. Right-Aligned Background Image
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 150,
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                errorBuilder: (_, __, ___) => Image.asset(
+                  'assets/images/gym_silhouette.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                ),
               ),
-            );
-          },
-          splashColor: AppTheme.primary.withValues(alpha: 0.06),
-          highlightColor: AppTheme.primary.withValues(alpha: 0.03),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.bolt_rounded,
-                    color: AppTheme.primary,
-                    size: 24,
+            ),
+            // 2. Faded Gradient Mask (Solid surface color on left, fading to transparent on right)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.surface,
+                      AppTheme.surface.withValues(alpha: 0.95),
+                      AppTheme.surface.withValues(alpha: 0.65),
+                      AppTheme.surface.withValues(alpha: 0.10),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+            // 3. Card Content
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WorkoutSessionDetailPage(sessionId: session.id),
+                    ),
+                  );
+                },
+                splashColor: muscleColor.withValues(alpha: 0.08),
+                highlightColor: muscleColor.withValues(alpha: 0.04),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
                     children: [
-                      Text(
-                        session.title,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                      // Leading Dynamic Icon Badge
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: muscleColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: muscleColor.withValues(alpha: 0.35),
+                            width: 1,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Icon(
+                          muscleIcon,
+                          color: muscleColor,
+                          size: 24,
+                        ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _buildChip(Icons.calendar_today_rounded, date),
-                          const SizedBox(width: 10),
-                          _buildChip(Icons.timer_rounded, duration),
-                          if (setCount > 0) ...[
-                            const SizedBox(width: 10),
-                            _buildChip(Icons.repeat_rounded, '$setCount sets'),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Title + PR trophy badge if any
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    session.title,
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (prCount > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.emoji_events_rounded,
+                                          color: Color(0xFFFFD700),
+                                          size: 11,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          '$prCount PR${prCount > 1 ? \'s\' : \'\'}',
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFD700),
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            // Exercises list preview
+                            if (exercises.isNotEmpty) ...[
+                              Text(
+                                exercises.join(' • '),
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 11.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                            ] else ...[
+                              const SizedBox(height: 4),
+                            ],
+                            // Chips Row
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                _buildChip(Icons.calendar_today_rounded, date),
+                                _buildChip(Icons.timer_rounded, duration),
+                                if (setCount > 0)
+                                  _buildChip(Icons.repeat_rounded, '$setCount sets'),
+                                if (totalVol > 0)
+                                  _buildChip(Icons.bolt_rounded, '${totalVol.toInt()} kg'),
+                              ],
+                            ),
                           ],
-                        ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: muscleColor,
+                        size: 20,
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppTheme.primary,
-                  size: 20,
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -587,5 +705,91 @@ class _WorkoutHistoryViewState extends ConsumerState<WorkoutHistoryView> {
         ],
       ),
     );
+  }
+}
+
+extension _WorkoutSessionModelExtension on WorkoutSessionModel {
+  double get totalVolume {
+    return sets.fold(0.0, (sum, set) => sum + (set.weightKg * set.reps));
+  }
+
+  int get prCount {
+    return sets.where((set) => set.isPr).length;
+  }
+
+  List<String> get uniqueExerciseNames {
+    final names = <String>[];
+    for (var set in sets) {
+      if (!names.contains(set.exerciseName)) {
+        names.add(set.exerciseName);
+      }
+    }
+    return names;
+  }
+
+  String get dominantMuscleGroup {
+    if (sets.isEmpty) return 'Full Body';
+    final counts = <String, int>{};
+    for (var set in sets) {
+      final name = set.exerciseName.toLowerCase();
+      String muscle = 'Full Body';
+      
+      if (name.contains('chest') || name.contains('bench') || name.contains('fly') || name.contains('push')) {
+        muscle = 'Chest';
+      } else if (name.contains('back') || name.contains('row') || name.contains('lat') || name.contains('pull') || name.contains('deadlift')) {
+        muscle = 'Back';
+      } else if (name.contains('leg') || name.contains('squat') || name.contains('curl') || name.contains('press') || name.contains('calf') || name.contains('lunge')) {
+        muscle = 'Legs';
+      } else if (name.contains('shoulder') || name.contains('delt') || name.contains('raise') || name.contains('overhead')) {
+        muscle = 'Shoulders';
+      } else if (name.contains('arm') || name.contains('bicep') || name.contains('tricep') || name.contains('extension')) {
+        muscle = 'Arms';
+      } else if (name.contains('core') || name.contains('ab') || name.contains('plank') || name.contains('crunch')) {
+        muscle = 'Core';
+      } else if (name.contains('cardio') || name.contains('run') || name.contains('bike') || name.contains('treadmill')) {
+        muscle = 'Cardio';
+      }
+      
+      counts[muscle] = (counts[muscle] ?? 0) + 1;
+    }
+
+    if (counts.isEmpty) return 'Full Body';
+    final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.first.key;
+  }
+
+  String get dominantMuscleImagePath {
+    final m = dominantMuscleGroup.toLowerCase();
+    if (m.contains('chest')) return 'assets/images/session_chest.png';
+    if (m.contains('back')) return 'assets/images/session_back.png';
+    if (m.contains('leg')) return 'assets/images/session_legs.png';
+    if (m.contains('shoulder')) return 'assets/images/session_shoulders.png';
+    if (m.contains('arm')) return 'assets/images/session_arms.png';
+    if (m.contains('core')) return 'assets/images/session_core.png';
+    if (m.contains('cardio')) return 'assets/images/session_cardio.png';
+    return 'assets/images/gym_silhouette.png';
+  }
+
+  Color get dominantMuscleColor {
+    final m = dominantMuscleGroup.toLowerCase();
+    if (m.contains('chest')) return const Color(0xFF00F0FF); // Neon Cyan
+    if (m.contains('back')) return AppTheme.primary; // Volt Lime
+    if (m.contains('leg')) return const Color(0xFFFF007A); // Neon Pink
+    if (m.contains('shoulder')) return const Color(0xFF7000FF); // Neon Purple
+    if (m.contains('arm')) return const Color(0xFFFFB800); // Gold / Amber
+    if (m.contains('core')) return const Color(0xFF00FF66); // Neon Green
+    if (m.contains('cardio')) return const Color(0xFFFF5E00); // Neon Orange
+    return AppTheme.primary;
+  }
+
+  IconData get dominantMuscleIcon {
+    final m = dominantMuscleGroup.toLowerCase();
+    if (m.contains('chest') || m.contains('arm')) return Icons.fitness_center_rounded;
+    if (m.contains('back')) return Icons.keyboard_double_arrow_up_rounded;
+    if (m.contains('leg')) return Icons.sports_gymnastics_rounded;
+    if (m.contains('shoulder')) return Icons.upgrade_rounded;
+    if (m.contains('core')) return Icons.center_focus_strong_rounded;
+    if (m.contains('cardio')) return Icons.directions_run_rounded;
+    return Icons.bolt_rounded;
   }
 }
