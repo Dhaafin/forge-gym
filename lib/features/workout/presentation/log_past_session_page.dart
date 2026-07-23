@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/flash_message.dart';
 import '../../../../core/widgets/forge_search_bar.dart';
+import '../../../core/widgets/forge_api_bottom_sheet.dart';
 import '../controllers/live_session_controller.dart';
 import '../controllers/exercise_controller.dart';
 import '../models/workout_session_model.dart';
@@ -16,7 +17,8 @@ import 'widgets/add_set_sheet.dart';
 import 'widgets/exercise_form_sheet.dart';
 
 class LogPastSessionPage extends ConsumerStatefulWidget {
-  const LogPastSessionPage({super.key});
+  final bool isEditing;
+  const LogPastSessionPage({super.key, this.isEditing = false});
 
   @override
   ConsumerState<LogPastSessionPage> createState() => _LogPastSessionPageState();
@@ -71,7 +73,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
   }
 
   void _saveSession() async {
-    final newSession = await ref.read(liveSessionControllerProvider.notifier).finishWorkout();
+    final newSession = await ref.read(liveSessionControllerProvider.notifier).finishWorkout(isEditing: widget.isEditing);
     if (newSession != null) {
       if (mounted) {
         Navigator.pop(context, newSession);
@@ -118,7 +120,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
             Navigator.pop(context, false);
           },
         ),
-        title: const Text('Log Past Session', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(widget.isEditing ? 'Edit Workout Session' : 'Log Past Session', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ),
       body: Column(
         children: [
@@ -185,7 +187,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    '✨ Auto-fill dengan Catatan AI',
+                                    '✨ Auto-fill with AI Notes',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -194,7 +196,7 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Tempel tulisan workout Anda untuk di-parse instan.',
+                                    'Paste your workout notes to parse instantly.',
                                     style: TextStyle(
                                       color: Colors.white.withValues(alpha: 0.6),
                                       fontSize: 12,
@@ -295,20 +297,75 @@ class _LogPastSessionPageState extends ConsumerState<LogPastSessionPage> {
                             exerciseName.toUpperCase(),
                             style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, letterSpacing: 1.2),
                           ),
-                          TextButton.icon(
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => AddSetSheet(
-                                  exercise: ExerciseModel(id: entry.key, name: exerciseName, targetMuscle: ''),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.add_rounded, size: 16),
-                            label: const Text('Set'),
-                            style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+                          Row(
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (context) => AddSetSheet(
+                                      exercise: ExerciseModel(id: entry.key, name: exerciseName, targetMuscle: ''),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.add_rounded, size: 16),
+                                label: const Text('Set'),
+                                style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+                              ),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
+                                onSelected: (value) async {
+                                  if (value == 'swap') {
+                                    final selected = await showForgeApiOptionSelector<ExerciseModel>(
+                                      context: context,
+                                      title: 'Swap Exercise',
+                                      subtitle: 'Choose a replacement for $exerciseName',
+                                      selectedValue: null,
+                                      fetchItems: (query, offset) => ref.read(workoutServiceProvider).fetchExercises(
+                                            search: query,
+                                            offset: offset,
+                                            limit: 10,
+                                          ),
+                                      labelBuilder: (e) => e.name,
+                                      idBuilder: (e) => e.id,
+                                      iconBuilder: (e) => Icons.fitness_center_rounded,
+                                    );
+                                    if (selected != null && context.mounted) {
+                                      ref.read(liveSessionControllerProvider.notifier).replaceExercise(
+                                        oldExerciseId: entry.key,
+                                        newExercise: selected,
+                                      );
+                                    }
+                                  } else if (value == 'delete') {
+                                    ref.read(liveSessionControllerProvider.notifier).deleteExercise(entry.key);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'swap',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.swap_horiz_rounded, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Swap Exercise'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Delete Exercise', style: TextStyle(color: AppTheme.error)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -488,7 +545,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
   final Map<String, ExerciseModel> _mappedExercises = {};
 
   double _loadingProgress = 0.0;
-  String _loadingMessage = 'Menginisialisasi...';
+  String _loadingMessage = 'Initializing...';
   Timer? _loadingTimer;
 
   @override
@@ -506,14 +563,14 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
       _isLoading = true;
       _error = null;
       _loadingProgress = 0.0;
-      _loadingMessage = 'Menghubungi AI...';
+      _loadingMessage = 'Contacting AI...';
     });
 
     final steps = [
-      _LoadingStep(0.0, 0.25, 'Membaca catatan latihan...'),
-      _LoadingStep(0.25, 0.55, 'Mengidentifikasi nama latihan...'),
-      _LoadingStep(0.55, 0.80, 'Menganalisis set, reps & beban...'),
-      _LoadingStep(0.80, 0.95, 'Mencocokkan dengan database...'),
+      _LoadingStep(0.0, 0.25, 'Reading workout notes...'),
+      _LoadingStep(0.25, 0.55, 'Identifying exercise names...'),
+      _LoadingStep(0.55, 0.80, 'Analyzing sets, reps & weights...'),
+      _LoadingStep(0.80, 0.95, 'Matching with database...'),
     ];
 
     _loadingTimer?.cancel();
@@ -544,7 +601,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
       _loadingTimer?.cancel();
       setState(() {
         _loadingProgress = 1.0;
-        _loadingMessage = 'Parsing selesai!';
+        _loadingMessage = 'Parsing complete!';
       });
       await Future.delayed(const Duration(milliseconds: 250));
 
@@ -592,13 +649,13 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
       _isLoading = true;
       _error = null;
       _loadingProgress = 0.0;
-      _loadingMessage = 'Menghubungkan latihan...';
+      _loadingMessage = 'Linking exercises...';
     });
 
     final steps = [
-      _LoadingStep(0.0, 0.40, 'Menghubungkan ke database...'),
-      _LoadingStep(0.40, 0.80, 'Membuat latihan baru jika diperlukan...'),
-      _LoadingStep(0.80, 0.95, 'Menyinkronkan hasil catatan...'),
+      _LoadingStep(0.0, 0.40, 'Linking to database...'),
+      _LoadingStep(0.40, 0.80, 'Creating new exercises if needed...'),
+      _LoadingStep(0.80, 0.95, 'Synchronizing notes...'),
     ];
 
     _loadingTimer?.cancel();
@@ -670,7 +727,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
       _loadingTimer?.cancel();
       setState(() {
         _loadingProgress = 1.0;
-        _loadingMessage = 'Sinkronisasi berhasil!';
+        _loadingMessage = 'Sync successful!';
       });
       await Future.delayed(const Duration(milliseconds: 250));
 
@@ -753,7 +810,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary),
             const SizedBox(width: 12),
             Text(
-              'Auto-fill dengan Catatan AI',
+              'Auto-fill with AI Notes',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -763,7 +820,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Tempel catatan latihan Anda di bawah. AI akan memilah nama latihan, set, reps, beban, dan tanggal latihan secara otomatis.',
+          'Paste your workout notes below. AI will automatically parse the exercise name, sets, reps, weight, and date.',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
         ),
         const SizedBox(height: 16),
@@ -788,7 +845,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
           minLines: 3,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Contoh:\n## 06-04-26 (Pull Day)\n- Lat Pulldowns 3 x 12 (30kg)\n- Bicep Curl 3 x 10 (10kg)',
+            hintText: 'Example:\n## 06-04-26 (Pull Day)\n- Lat Pulldowns 3 x 12 (30kg)\n- Bicep Curl 3 x 10 (10kg)',
             hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
             filled: true,
             fillColor: AppTheme.surface,
@@ -810,7 +867,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             ),
           ),
           child: const Text(
-            'PARSE CATATAN AI',
+            'PARSE AI NOTES',
             style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
           ),
         ),
@@ -829,7 +886,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
             const Icon(Icons.help_outline_rounded, color: AppTheme.primary),
             const SizedBox(width: 12),
             Text(
-              'Latihan Baru Terdeteksi',
+              'New Exercises Detected',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -839,7 +896,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Latihan-latihan berikut tidak ditemukan di database Anda. Silakan hubungkan ke database atau pilih buat secara otomatis:',
+          'The following exercises were not found in your database. Please link them to existing ones or create them automatically:',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
         ),
         const SizedBox(height: 16),
@@ -896,7 +953,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                         _selectedUnmatchedNames.add(rawName);
                       });
                     },
-                    child: const Text('Ganti', style: TextStyle(color: AppTheme.primary)),
+                    child: const Text('Change', style: TextStyle(color: AppTheme.primary)),
                   ),
                 );
               } else {
@@ -927,7 +984,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                             ),
                             Text(
-                              'Buat baru (Otot: $muscle)',
+                              'Create new (Muscle: $muscle)',
                               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                             ),
                           ],
@@ -975,7 +1032,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                   foregroundColor: AppTheme.textSecondary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Batal'),
+                child: const Text('Cancel'),
               ),
             ),
             const SizedBox(width: 12),
@@ -991,7 +1048,7 @@ class _ParseNotesSheetState extends ConsumerState<_ParseNotesSheet> {
                   ),
                 ),
                 child: const Text(
-                  'BUAT & MASUKKAN',
+                  'CREATE & INSERT',
                   style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
                 ),
               ),
@@ -1077,12 +1134,12 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
               const SizedBox(height: 12),
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 16),
-              const Text('Pilih Latihan Terdaftar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text('Select Registered Exercise', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
                 child: ForgeSearchBar(
                   controller: _searchController,
-                  hintText: 'Cari latihan...',
+                  hintText: 'Search exercise...',
                   onSubmitted: (val) {
                     ref.read(exerciseControllerProvider.notifier).setSearch(val.trim());
                   },
@@ -1104,7 +1161,7 @@ class _LinkExerciseSheetState extends ConsumerState<_LinkExerciseSheet> {
                     }
                   },
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Buat Latihan Baru'),
+                  label: const Text('Create New Exercise'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
                     foregroundColor: AppTheme.primary,

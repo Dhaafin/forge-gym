@@ -144,6 +144,46 @@ class LiveSessionController extends Notifier<LiveSessionState> {
     _saveDraftToLocal();
   }
 
+  void startEditSession(WorkoutSessionModel session) {
+    final newDraft = DraftSessionModel(
+      id: session.id,
+      title: session.title,
+      startTime: session.startDateTime,
+      endTime: session.endTime != null ? (DateTime.tryParse(session.endTime!)?.toLocal() ?? session.startDateTime.add(const Duration(hours: 1))) : session.startDateTime.add(const Duration(hours: 1)),
+      durationMinutes: session.durationMinutes ?? 60,
+      isLive: false,
+      sets: session.sets,
+    );
+    state = state.copyWith(draft: newDraft, elapsedTime: Duration.zero, clearError: true);
+    _saveDraftToLocal();
+  }
+
+  void replaceExercise({required String oldExerciseId, required ExerciseModel newExercise}) {
+    if (state.draft == null) return;
+    final updatedSets = state.draft!.sets.map((set) {
+      if (set.exerciseId == oldExerciseId) {
+        return set.copyWith(
+          exerciseId: newExercise.id,
+          exerciseName: newExercise.name,
+        );
+      }
+      return set;
+    }).toList();
+    state = state.copyWith(
+      draft: state.draft!.copyWith(sets: updatedSets),
+    );
+    _saveDraftToLocal();
+  }
+
+  void deleteExercise(String exerciseId) {
+    if (state.draft == null) return;
+    final updatedSets = state.draft!.sets.where((set) => set.exerciseId != exerciseId).toList();
+    state = state.copyWith(
+      draft: state.draft!.copyWith(sets: updatedSets),
+    );
+    _saveDraftToLocal();
+  }
+
   Future<void> parseAndPopulateNotes(String rawText) async {
     if (state.draft == null) return;
 
@@ -320,7 +360,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
   /// then calling [resetState] to clean up.
   ///
   /// Returns the saved [WorkoutSessionModel] on success, or `null` on failure.
-  Future<WorkoutSessionModel?> finishWorkout() async {
+  Future<WorkoutSessionModel?> finishWorkout({bool isEditing = false}) async {
     if (state.draft == null) return null;
 
     _timer?.cancel();
@@ -334,6 +374,7 @@ class LiveSessionController extends Notifier<LiveSessionState> {
           : (draft.durationMinutes ?? 0);
 
       final setsJson = draft.sets.map((s) => {
+        if (isEditing) 'id': s.id,
         'exercise_id': s.exerciseId,
         'set_number': s.setNumber,
         'weight_kg': s.weightKg,
@@ -341,22 +382,37 @@ class LiveSessionController extends Notifier<LiveSessionState> {
         'set_type': s.setType,
       }).toList();
 
-      debugPrint('[LiveSession] Sending ${setsJson.length} sets.');
+      debugPrint('[LiveSession] Sending ${setsJson.length} sets. isEditing = $isEditing');
 
-      final newSession = await ref.read(workoutServiceProvider).createWorkoutSession(
-        title: draft.title,
-        startTime: draft.startTime.toUtc().toIso8601String(),
-        endTime: endTime.toUtc().toIso8601String(),
-        durationMinutes: durationMinutes,
-        sets: setsJson,
-      );
+      WorkoutSessionModel newSession;
+      if (isEditing) {
+        newSession = await ref.read(workoutServiceProvider).updateWorkoutSession(
+          sessionId: draft.id,
+          title: draft.title,
+          startTime: draft.startTime.toUtc().toIso8601String(),
+          endTime: endTime.toUtc().toIso8601String(),
+          durationMinutes: durationMinutes,
+          sets: setsJson,
+        );
+      } else {
+        newSession = await ref.read(workoutServiceProvider).createWorkoutSession(
+          title: draft.title,
+          startTime: draft.startTime.toUtc().toIso8601String(),
+          endTime: endTime.toUtc().toIso8601String(),
+          durationMinutes: durationMinutes,
+          sets: setsJson,
+        );
+      }
 
-      // Clear persisted draft and add the new session locally (best practice).
-      // Do NOT touch in-memory draft here — the UI caller navigates first,
-      // then calls resetState() to clean up.
+      // Clear persisted draft and sync locally.
       await ref.read(draftSessionServiceProvider).clearDraft();
       await NotificationManager.cancelWorkoutNotification();
-      ref.read(workoutHistoryControllerProvider.notifier).addSession(newSession);
+      
+      if (isEditing) {
+        ref.read(workoutHistoryControllerProvider.notifier).updateSessionInList(newSession);
+      } else {
+        ref.read(workoutHistoryControllerProvider.notifier).addSession(newSession);
+      }
 
       debugPrint('[LiveSession] Workout saved successfully.');
       state = state.copyWith(isLoading: false);

@@ -6,6 +6,8 @@ import '../../../../core/widgets/forge_skeleton.dart';
 import '../controllers/workout_history_controller.dart';
 import '../models/workout_session_model.dart';
 import '../controllers/ai_coach_controller.dart';
+import '../controllers/live_session_controller.dart';
+import 'log_past_session_page.dart';
 
 class WorkoutSessionDetailPage extends ConsumerStatefulWidget {
   final String sessionId;
@@ -63,119 +65,6 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
     return m == 0 ? '${h}h' : '${h}h ${m}m';
   }
 
-  void _showEditSessionDialog(BuildContext parentContext, WorkoutSessionModel session) {
-    showGeneralDialog(
-      context: parentContext,
-      barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final titleController = TextEditingController(text: session.title);
-        final durationController = TextEditingController(text: (session.durationMinutes ?? 0).toString());
-        bool isSaving = false;
-
-        return StatefulBuilder(
-          builder: (stContext, setState) {
-            return Scaffold(
-              backgroundColor: AppTheme.background,
-              appBar: AppBar(
-                title: const Text('Edit Workout Session'),
-                leading: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () => Navigator.pop(dialogContext),
-                ),
-                actions: [
-                  if (isSaving)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  else
-                    TextButton(
-                      onPressed: () async {
-                        final title = titleController.text.trim();
-                        final duration = int.tryParse(durationController.text) ?? 0;
-                        if (title.isEmpty) return;
-
-                        setState(() {
-                          isSaving = true;
-                        });
-
-                        try {
-                          await ref
-                              .read(workoutHistoryControllerProvider.notifier)
-                              .updateSession(session.id, title, duration);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                          if (parentContext.mounted) {
-                            parentContext.showSuccessFlash('Workout session updated');
-                          }
-                        } catch (e) {
-                          setState(() {
-                            isSaving = false;
-                          });
-                          if (parentContext.mounted) {
-                            parentContext.showErrorFlash(e.toString().replaceAll('Exception: ', ''));
-                          }
-                        }
-                      },
-                      child: const Text('SAVE', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                    ),
-                ],
-              ),
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Session Details',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Modify the workout name and tracked duration.',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                    ),
-                    const SizedBox(height: 32),
-                    TextField(
-                      controller: titleController,
-                      style: const TextStyle(color: AppTheme.textPrimary),
-                      decoration: const InputDecoration(
-                        labelText: 'Workout Title',
-                        hintText: 'e.g. Morning Push Workout',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: durationController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: AppTheme.textPrimary),
-                      decoration: const InputDecoration(
-                        labelText: 'Duration (Minutes)',
-                        hintText: 'e.g. 60',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _confirmDeleteSession(BuildContext parentContext, WorkoutSessionModel session) {
     showDialog(
@@ -507,7 +396,15 @@ class _WorkoutSessionDetailPageState extends ConsumerState<WorkoutSessionDetailP
           IconButton(
             icon: const Icon(Icons.edit_rounded),
             tooltip: 'Edit Session',
-            onPressed: () => _showEditSessionDialog(context, session),
+            onPressed: () {
+              ref.read(liveSessionControllerProvider.notifier).startEditSession(session);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LogPastSessionPage(isEditing: true),
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.delete_rounded, color: AppTheme.error),

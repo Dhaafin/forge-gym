@@ -208,21 +208,9 @@ class WorkoutHistoryController extends Notifier<WorkoutHistoryState> {
     );
   }
 
-  Future<void> updateSession(String id, String title, int durationMinutes) async {
-    try {
-      final service = ref.read(workoutServiceProvider);
-      final updated = await service.updateWorkoutSession(
-        sessionId: id,
-        title: title,
-        durationMinutes: durationMinutes,
-      );
-      
-      final updatedList = state.sessions.map<WorkoutSessionModel>((s) => s.id == id ? updated : s).toList();
-      state = state.copyWith(sessions: updatedList);
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString());
-      rethrow;
-    }
+  void updateSessionInList(WorkoutSessionModel updated) {
+    final updatedList = state.sessions.map<WorkoutSessionModel>((s) => s.id == updated.id ? updated : s).toList();
+    state = state.copyWith(sessions: updatedList);
   }
 
   Future<void> deleteSession(String id) async {

@@ -204,17 +204,23 @@ class WorkoutService {
   Future<WorkoutSessionModel> updateWorkoutSession({
     required String sessionId,
     required String title,
+    required String startTime,
+    required String endTime,
     required int durationMinutes,
+    required List<Map<String, dynamic>> sets,
   }) async {
     try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId').replace(
-        queryParameters: {
+      final response = await _client.put(
+        Uri.parse('${ApiConstants.baseUrl}/api/v1/workouts/session/$sessionId'),
+        extraHeaders: {'Content-Type': 'application/json'},
+        body: jsonEncode({
           'title': title,
-          'duration_minutes': durationMinutes.toString(),
-        },
+          'duration_minutes': durationMinutes,
+          'start_time': startTime,
+          'end_time': endTime,
+          'sets': sets,
+        }),
       );
-
-      final response = await _client.put(uri);
 
       if (response.statusCode == 200) {
         return WorkoutSessionModel.fromJson(jsonDecode(response.body));
